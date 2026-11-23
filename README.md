@@ -42,7 +42,7 @@ Draw the house from your field notes, get gross living area and the other area t
 | `R4 DR2.83 R4 UR2.83 R4` | 45° bay (lengths along the wall) |
 | `R10U5` | One diagonal wall: run 10, rise 5 |
 | `A30:12` | 12' at 30° |
-| `10'6R45` | 10'6" turned 45° to the right of the wall just drawn (`L` turns left; with `U` or `D`, or as the first wall, the angle is clockwise from that direction) |
+| `10'6R45` or `R45:10'6` | 10'6" turned 45° to the right of the wall just drawn (`L` turns left; with `U` or `D`, or as the first wall, the angle is clockwise from that direction) |
 | `R20^3` | Arc bulging 3' outward |
 | `CL` | Close back to the start |
 

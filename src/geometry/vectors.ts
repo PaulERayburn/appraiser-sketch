@@ -57,6 +57,10 @@ const RE_LENGTH_FIRST = new RegExp(`^(${LEN}?)(${DIAGS}|${CARD})(?:(${LEN}?)(${C
 // A length, a direction and a turn in degrees, as CValR Sketch writes an angled wall: 10'6R45.
 const RE_TURN = new RegExp(`^(${LEN}?)(${CARD})(-?[0-9]+(?:\\.[0-9]+)?)(\\^-?${LEN})?$`);
 
+// The same turn written direction first, like the A30:12 form: R45:10'6. The colon keeps
+// the degrees and the length apart (R10'645 could not be told from 10'6" at 45°).
+const RE_TURN_DIR_FIRST = new RegExp(`^(${CARD})(-?[0-9]+(?:\\.[0-9]+)?):(${LEN})(\\^-?${LEN})?$`);
+
 interface Move {
   dx: number;
   dy: number;
@@ -105,6 +109,9 @@ function parseToken(tok: string, heading: number | null = null): TokenResult {
     const r = parseToken(`${lf[2]}${lf[1]}${lf[4] ? `${lf[4]}${lf[3]}` : ""}${lf[5] ?? ""}`);
     return "error" in r && r.error.startsWith("unknown move") ? { error: `unknown move "${tok}"` } : r;
   }
+
+  const td = RE_TURN_DIR_FIRST.exec(t);
+  if (td) return parseToken(`${td[3]}${td[1]}${td[2]}${td[4] ?? ""}`, heading);
 
   let m = RE_DIAG.exec(t);
   if (m) {

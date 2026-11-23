@@ -192,6 +192,16 @@ describe("closing and errors", () => {
     expect(q.y).toBeCloseTo(-10 * Math.SQRT1_2, 6);
   });
 
+  it("turns: direction first with a colon reads the same", () => {
+    const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
+    same("R10 R45:10'6", "10R 10'6r45");
+    same("R10 L45:10'6 U22.5:4", "10R 10'6l45 4u22.5");
+    same("R10 r45:20^3", "10R 20r45^3");
+    expect(parseVectors("R10 R45:10'6").sources).toEqual(["R10", "A315:10'6"]);
+    // Without the colon the digits run together and it is read as a plain length (10'645").
+    expect(parseVectors("R10'645").errors.length + parseVectors("R10'645").path.segments.length).toBe(1);
+  });
+
   it("turns: recorded as absolute walls for rewrites", () => {
     const r = parseVectors("10R 10'6r45 5U");
     expect(r.sources).toEqual(["10R", "A315:10'6", "5U"]);
