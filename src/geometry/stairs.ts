@@ -9,8 +9,9 @@
  */
 
 import type { Point } from "./path.js";
+import { stairPlan } from "./stairplan.js";
 
-export type StairType = "straight" | "landing" | "l" | "u" | "winder";
+export type StairType = "straight" | "landing" | "l" | "u" | "winder" | "steps";
 
 export const STAIR_TYPES: { value: StairType; label: string }[] = [
   { value: "straight", label: "Straight" },
@@ -18,6 +19,7 @@ export const STAIR_TYPES: { value: StairType; label: string }[] = [
   { value: "l", label: "L (right angle) with landing" },
   { value: "winder", label: "L with winders" },
   { value: "u", label: "U with landing" },
+  { value: "steps", label: "Built from steps (any shape)" },
 ];
 
 export interface Stair {
@@ -35,6 +37,8 @@ export interface Stair {
   turn: "left" | "right";
   /** Arrow label as seen from this floor. */
   direction: "up" | "down";
+  /** For a stair built from steps: how it is walked, e.g. "2u sq r8" (see stairplan.ts). */
+  plan?: string;
 }
 
 export const TREAD_DEPTH = 10 / 12; // 10" treads for the symbol
@@ -92,6 +96,13 @@ function treads(x0: number, y0: number, x1: number, y1: number, axis: "x" | "y")
 
 /** Drawing in the local frame, for a right turn. */
 function localDrawing(s: Stair): StairDrawing {
+  if (s.type === "steps") {
+    const built = stairPlan(s.plan ?? "", s.width);
+    if (built.parts.length > 0) return built;
+    // Nothing readable yet: a landing-sized square, so there is something to see and click.
+    const side = Math.max(0.5, s.width);
+    return { parts: [rect(0, 0, side, side)], lines: [], arrow: [], footprint: side * side };
+  }
   const w = Math.max(0.5, s.width);
   const r1 = Math.max(0.5, s.run1);
   const r2 = Math.max(0.5, s.run2);
@@ -144,7 +155,7 @@ export function stairDrawing(s: Stair): StairDrawing {
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
   // A left turn mirrors the drawing about the first flight's centre line.
-  const mirror = s.turn === "left" && s.type !== "straight" && s.type !== "landing";
+  const mirror = s.turn === "left" && s.type !== "straight" && s.type !== "landing" && s.type !== "steps";
   const tf = (p: Point): Point => {
     const x = mirror ? w - p.x : p.x;
     return { x: s.origin.x + x * cos - p.y * sin, y: s.origin.y + x * sin + p.y * cos };
@@ -172,6 +183,7 @@ const MIN_RUN = 1;
 
 /** Handle positions in the local frame (right turn, before mirroring). */
 function localHandles(s: Stair): { key: StairHandleKey; p: Point }[] {
+  if (s.type === "steps") return []; // shaped by its steps, not by dragging
   const w = Math.max(0.5, s.width);
   const r1 = Math.max(0.5, s.run1);
   const r2 = Math.max(0.5, s.run2);
@@ -199,7 +211,7 @@ function frame(s: Stair) {
   const rad = (s.rotation * Math.PI) / 180;
   const cos = Math.cos(rad);
   const sin = Math.sin(rad);
-  const mirror = s.turn === "left" && s.type !== "straight" && s.type !== "landing";
+  const mirror = s.turn === "left" && s.type !== "straight" && s.type !== "landing" && s.type !== "steps";
   return {
     toWorld: (p: Point): Point => {
       const x = mirror ? w - p.x : p.x;

@@ -152,6 +152,7 @@ function readStair(st: Raw, where: string): Stair {
       run2: positive("run2"),
       turn: oneOf(st, "turn", ["left", "right"] as const, where),
       direction: oneOf(st, "direction", ["up", "down"] as const, where),
+      plan: str(st, "plan", where),
     }),
   );
 }

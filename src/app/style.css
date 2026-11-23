@@ -159,6 +159,14 @@ button.hidden, .add-menu.hidden { display: none; }
 .note-small { color: var(--muted); font-size: 11.5px; }
 #stair-form.hidden, #zone-form.hidden, .slope-fields.hidden, #label-edit.hidden, .panel.hidden { display: none; }
 #stair-form.one-flight .two-flight, #stair-form.no-turn .turning { visibility: hidden; }
+#stair-form:not(.steps) .steps-fields, #stair-form.steps .flights { display: none; }
+.steps-fields { display: flex; flex-direction: column; gap: 4px; }
+.steps-fields label { display: flex; flex-direction: column; gap: 2px; }
+#st-plan { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; resize: vertical; }
+.steps-build { display: flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.steps-build input { width: 34px; text-align: center; }
+.steps-build button { padding: 2px 6px; }
+#st-plan-msg.bad { color: var(--warn); }
 input.invalid { border-color: var(--warn); }
 details summary { cursor: pointer; color: var(--muted); }
 details[open] { display: flex; flex-direction: column; gap: 6px; }

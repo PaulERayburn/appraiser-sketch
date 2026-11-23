@@ -82,6 +82,8 @@ Click a wall to select it: drag it to move it, drag its round handles to move an
 
 **Stairs**
 
+For any other shape, pick **Built from steps** as the type and say how the stair is walked: `2u sq r8` is 2 steps up, a square landing and 8 steps right; `rad 3rise` is a 90° corner of 3 pie-shaped steps (`rad 180` goes right round); `6u sq r sq d6` is a U. The arrow, Landing and Winders buttons under the box add the pieces for you, and plain words work (`2 steps up, square landing, 8 to the right`). Right-click a stair for its type, arrow, rotate, copy and delete.
+
 Click a stair to select it, then drag it or its round handles (flight lengths, width). T rotates it. **Copy to** on the Stairs panel copies it to another floor at the same spot, pointing down from above or up from below.
 
 **Labels and dimensions**

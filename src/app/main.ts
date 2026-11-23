@@ -19,6 +19,7 @@ import {
   STAIR_TYPES,
   defaultStair,
   stairDrawing,
+  stairPlan,
   type Stair,
   type StairHandleKey,
   dragStairHandle,
@@ -1111,10 +1112,14 @@ const stairs = {
   rot: $<HTMLSelectElement>("st-rot"),
   x: $<HTMLInputElement>("st-x"),
   y: $<HTMLInputElement>("st-y"),
+  plan: $<HTMLTextAreaElement>("st-plan"),
+  count: $<HTMLInputElement>("st-count"),
+  build: $<HTMLDivElement>("st-build"),
+  planMsg: $<HTMLDivElement>("st-plan-msg"),
 };
 stairs.type.innerHTML = STAIR_TYPES.map((t) => `<option value="${t.value}">${esc(t.label)}</option>`).join("");
 
-const STAIR_TYPE_SHORT: Record<string, string> = { straight: "Straight", landing: "Landing", l: "L", winder: "Winder", u: "U" };
+const STAIR_TYPE_SHORT: Record<string, string> = { straight: "Straight", landing: "Landing", l: "L", winder: "Winder", u: "U", steps: "Built" };
 
 function selectedStair(): Stair | null {
   const sel = store.state.selection;
@@ -1137,7 +1142,18 @@ function drawStairs() {
   stairs.form.classList.toggle("hidden", !st);
   if (!st) return;
   stairs.form.classList.toggle("one-flight", st.type === "straight");
-  stairs.form.classList.toggle("no-turn", st.type === "straight" || st.type === "landing");
+  stairs.form.classList.toggle("no-turn", st.type === "straight" || st.type === "landing" || st.type === "steps");
+  stairs.form.classList.toggle("steps", st.type === "steps");
+  if (st.type === "steps") {
+    sync(stairs.plan, st.plan ?? "");
+    const built = stairPlan(st.plan ?? "", st.width);
+    stairs.planMsg.classList.toggle("bad", built.errors.length > 0);
+    stairs.planMsg.textContent = built.errors.length
+      ? built.errors.join(" · ")
+      : built.steps > 0
+        ? `${built.steps} step${built.steps === 1 ? "" : "s"} · ${formatSqFt(built.footprint)} sf on plan. Arrows add steps, Landing and Winders add a place to turn.`
+        : "Use the buttons, or type: 2u sq r8 is 2 steps up, a landing, 8 steps right.";
+  }
   sync(stairs.type, st.type);
   sync(stairs.width, formatLength(st.width));
   sync(stairs.dir, st.direction);
@@ -1203,7 +1219,33 @@ function rotateStair() {
 }
 $("btn-rotate-stair").addEventListener("click", rotateStair);
 
-stairs.type.addEventListener("change", () => editStair((st) => (st.type = stairs.type.value as Stair["type"])));
+stairs.type.addEventListener("change", () =>
+  editStair((st) => {
+    st.type = stairs.type.value as Stair["type"];
+    // Start a built stair from something to see: a flight, a landing, a flight.
+    if (st.type === "steps" && !(st.plan ?? "").trim()) st.plan = "4u sq r4";
+  }),
+);
+stairs.plan.addEventListener("input", () => editStair((st) => (st.plan = stairs.plan.value), "plan"));
+// The builder: each button adds a piece to the end, so the steps need not be remembered.
+stairs.build.addEventListener("click", (e) => {
+  const step = (e.target as Element).closest("[data-step]")?.getAttribute("data-step");
+  const st = selectedStair();
+  if (!step || !st) return;
+  const n = Math.max(1, Math.round(Number(stairs.count.value)) || 1);
+  const pieces = (st.plan ?? "").trim().split(/\s+/).filter(Boolean);
+  if (step === "back") {
+    // "rad 3rise" is one piece.
+    const last = pieces.pop();
+    if (last && /rise/.test(last) && /^rad/.test(pieces[pieces.length - 1] ?? "")) pieces.pop();
+  } else if (step === "sq") pieces.push("sq");
+  else if (step === "rad") pieces.push("rad", `${n}rise`);
+  else pieces.push(`${n}${step}`);
+  const plan = pieces.join(" ");
+  external = true; // the box shows the result even if it has the caret
+  editStair((s2) => (s2.plan = plan));
+  external = false;
+});
 stairs.dir.addEventListener("change", () => editStair((st) => (st.direction = stairs.dir.value as Stair["direction"])));
 stairs.turn.addEventListener("change", () => editStair((st) => (st.turn = stairs.turn.value as Stair["turn"])));
 stairs.rot.addEventListener("change", () => editStair((st) => (st.rotation = Number(stairs.rot.value))));
@@ -3098,6 +3140,17 @@ function areaMenu(): MenuItem[] {
   else if (walls > 0) items.push({ label: "Open outline", hint: "removes the closing wall", run: () => void deleteWallAction() });
   items.push(
     { label: "Add stair", run: () => $("btn-add-stair").click() },
+    ...(f.area.stairs ?? []).map((st, k): MenuItem => ({
+      label: `Delete stair ${k + 1}`,
+      hint: STAIR_TYPE_SHORT[st.type] ?? "",
+      danger: true,
+      run: () => {
+        const sel = store.state.selection;
+        if (!sel) return;
+        store.select({ structure: sel.structure, area: sel.area, stair: st.id });
+        $("btn-delete-stair").click();
+      },
+    })),
     { label: "Add ceiling zone or opening", run: () => $("btn-show-zones").click() },
     { label: "Draw interior walls", run: () => iwallButton.click() },
     "sep",
@@ -3106,6 +3159,21 @@ function areaMenu(): MenuItem[] {
     { label: "Delete area", danger: true, run: () => $("btn-delete-area").click() },
   );
   return items;
+}
+
+function stairMenu(): MenuItem[] {
+  const st = selectedStair();
+  if (!st) return areaMenu();
+  return [
+    ...choiceItem("Stair type", stairs.type),
+    ...(st.type === "steps" ? [{ label: "Edit its steps", hint: (st.plan ?? "").trim() || "none yet", run: () => renameIn(stairs.panel, stairs.plan as unknown as HTMLInputElement) }] : []),
+    ...choiceItem("Arrow", stairs.dir),
+    ...(st.type === "straight" || st.type === "landing" || st.type === "steps" ? [] : choiceItem("Turn", stairs.turn)),
+    { label: "Rotate 90°", run: () => rotateStair() },
+    { label: "Copy to…", hint: "this or another floor", run: () => { setCollapsed(stairs.panel, false); const d = $<HTMLDetailsElement>("copy-stair"); d.open = true; d.querySelector("summary")?.focus(); } },
+    "sep",
+    { label: "Delete stair", danger: true, run: () => $("btn-delete-stair").click() },
+  ];
 }
 
 function structureMenu(): MenuItem[] {
@@ -3145,7 +3213,17 @@ tree.addEventListener("contextmenu", (e) => {
   openMenu(e.clientX, e.clientY, store.state.selection?.structure === structure ? structureMenu() : sketchMenu());
 });
 
-// On the drawing: over an area it is that area's menu, elsewhere the sketch's.
+// A stair in the Stairs panel's list.
+stairs.list.addEventListener("contextmenu", (e) => {
+  const b = (e.target as Element).closest("[data-stair]");
+  const sel = store.state.selection;
+  if (!b || !sel) return;
+  e.preventDefault();
+  store.select({ structure: sel.structure, area: sel.area, stair: b.getAttribute("data-stair")! });
+  openMenu(e.clientX, e.clientY, stairMenu());
+});
+
+// On the drawing: over a stair it is the stair's menu, over an area that area's, elsewhere the sketch's.
 canvas.addEventListener("contextmenu", (e) => {
   if (drawing) return; // drawing interior walls: leave the mouse alone
   e.preventDefault();
@@ -3153,7 +3231,11 @@ canvas.addEventListener("contextmenu", (e) => {
   const el = document.elementFromPoint(e.clientX, e.clientY)?.closest("#canvas [data-area]");
   const structure = el?.getAttribute("data-structure");
   const area = el?.getAttribute("data-area");
-  if (structure && area) {
+  const stair = el?.getAttribute("data-stair");
+  if (structure && area && stair) {
+    store.select({ structure, area, stair });
+    openMenu(e.clientX, e.clientY, stairMenu());
+  } else if (structure && area) {
     store.select({ structure, area });
     openMenu(e.clientX, e.clientY, areaMenu());
   } else {

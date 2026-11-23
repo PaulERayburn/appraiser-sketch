@@ -260,7 +260,24 @@
                 </select>
               </label>
             </div>
-            <div class="pair">
+            <div class="steps-fields">
+              <label>Steps, as walked
+                <textarea id="st-plan" rows="2" spellcheck="false" autocomplete="off" placeholder="2u sq r8"
+                  title="How the stair is walked. 2u sq r8: 2 steps up, a square landing, 8 steps right. rad 3rise: a corner of 3 pie-shaped steps. Plain words work too."></textarea>
+              </label>
+              <div class="steps-build" id="st-build">
+                <input id="st-count" type="text" inputmode="numeric" value="3" title="How many steps the next button adds" aria-label="How many steps" />
+                <button data-step="u" title="Add that many steps going up the screen">↑</button>
+                <button data-step="d" title="Add that many steps going down the screen">↓</button>
+                <button data-step="l" title="Add that many steps going left">←</button>
+                <button data-step="r" title="Add that many steps going right">→</button>
+                <button data-step="sq" title="Add a square landing (turn on it with the next arrow)">Landing</button>
+                <button data-step="rad" title="Add a 90° corner of that many pie-shaped steps (it turns the way the next arrow goes)">Winders</button>
+                <button data-step="back" title="Take off the last piece">⌫</button>
+              </div>
+              <div id="st-plan-msg" class="note-small"></div>
+            </div>
+            <div class="pair flights">
               <label>First flight <input id="st-run1" type="text" inputmode="decimal" /></label>
               <label class="two-flight">Second flight <input id="st-run2" type="text" inputmode="decimal" /></label>
             </div>
