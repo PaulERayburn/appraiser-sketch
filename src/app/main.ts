@@ -37,6 +37,7 @@ import {
   zoneLabel,
   zoneShort,
   applyArrow,
+  corners,
   skipToCorner,
   closeOutline,
   deleteWall,
@@ -1609,7 +1610,14 @@ function endAdjust(): boolean {
   return true;
 }
 
-/** "L" then Enter → a wall left as far as the next corner already drawn (outlines and zones, not interior walls). */
+/** The walls text a skip left behind and its direction: Enter again straight after carries on the same way. */
+let lastSkip: { text: string; dir: string } | null = null;
+
+/**
+ * "L" then Enter → a wall left as far as the next corner already drawn
+ * (outlines and zones, not interior walls). Enter again, with nothing typed
+ * since, carries the same wall on to the corner after that.
+ */
 function skipIntoWalls(): boolean {
   const sel = store.state.selection;
   const found = findArea(store.state.sketch, sel);
@@ -1617,11 +1625,28 @@ function skipIntoWalls(): boolean {
   if (vectors.selectionStart !== vectors.selectionEnd) return false;
   const zone = sel?.zone ? found.area.zones.find((z) => z.id === sel.zone) : undefined;
   if (sel?.zone && !zone) return false;
-  const r = skipToCorner(vectors.value, vectors.selectionStart ?? vectors.value.length, (zone ?? found.area).origin);
-  if (!r) return false;
+  const origin = (zone ?? found.area).origin;
+  // Corners of the other areas count too: line a wall up with the floor below or the garage.
+  const others = zone
+    ? corners(found.area.vectors, found.area.origin)
+    : store.state.sketch.structures.flatMap((s) => s.areas).filter((a) => a.id !== found.area.id).flatMap((a) => corners(a.vectors, a.origin));
+  const caret = vectors.selectionStart ?? vectors.value.length;
+  let again = false;
+  let r = skipToCorner(vectors.value, caret, origin, others);
+  let dir = /([lrud])$/i.exec(vectors.value.slice(0, caret))?.[1] ?? "";
+  if (!r && lastSkip && vectors.value === lastSkip.text && caret === vectors.value.length) {
+    again = true;
+    dir = lastSkip.dir;
+    r = skipToCorner(vectors.value + dir, vectors.value.length + 1, origin, others);
+  }
+  if (!r) {
+    if (again) say("No corner further that way");
+    return again; // a repeat with nowhere to go: stay put rather than add blank lines
+  }
   vectors.value = r.text;
   vectors.setSelectionRange(r.caret, r.caret);
   vectors.dispatchEvent(new Event("input"));
+  lastSkip = { text: r.text, dir };
   return true;
 }
 

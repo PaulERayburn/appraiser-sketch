@@ -140,10 +140,10 @@ export function applyArrow(text: string, caret: number, dir: "up" | "down" | "le
  * it lines up with the next corner already drawn: "L" from the far side of a
  * house stops straight above or below the nearest corner to its left. A
  * second bare direction the same way carries the same wall on to the corner
- * after that. Returns the new text (ending on a new line) and caret position,
+ * after that. `others` are corners of other areas to line up with as well. Returns the new text (ending on a new line) and caret position,
  * or null when there is no bare direction or no corner that way.
  */
-export function skipToCorner(text: string, caret: number, origin: Point): { text: string; caret: number } | null {
+export function skipToCorner(text: string, caret: number, origin: Point, others: readonly Point[] = []): { text: string; caret: number } | null {
   if (text.slice(caret).trim() !== "") return null;
   const before = text.slice(0, caret);
   const m = /(^|[\s,])([lrud])$/i.exec(before);
@@ -159,7 +159,7 @@ export function skipToCorner(text: string, caret: number, origin: Point): { text
   const sign = letter === "R" || letter === "U" ? 1 : -1;
   const tol = 1 / 96;
   // How far that way each other corner is; the nearest one ahead is the stop.
-  const ahead = pts
+  const ahead = [...pts, ...others]
     .map((p) => sign * (horizontal ? p.x - pen.x : p.y - pen.y))
     .filter((d) => d > tol);
   if (ahead.length === 0) return null;

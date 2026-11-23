@@ -46,7 +46,7 @@ Draw the house from your field notes, get gross living area and the other area t
 | `R20^3` | Arc bulging 3' outward |
 | `CL` | Close back to the start |
 
-You can also type straight onto the drawing: a length then an arrow key makes a wall (`30` then ↑ gives `U30`). Arrow keys then lengthen or shorten that wall one step (1", or 0.1' in decimal feet; Shift: 1') until Enter moves on to the next wall. Backspace removes the last wall, and `A` closes the outline. A direction on its own then Enter (`L` Enter) runs the wall until it lines up with the next corner already drawn; the same again carries it on to the corner after that, so you can square up to an earlier wall without adding up the runs. The walls box can sit under the drawing, above it, on either side, or float over it: pick from the small list beside it (floating: drag it by the word Walls).
+You can also type straight onto the drawing: a length then an arrow key makes a wall (`30` then ↑ gives `U30`). Arrow keys then lengthen or shorten that wall one step (1", or 0.1' in decimal feet; Shift: 1') until Enter moves on to the next wall. Backspace removes the last wall, and `A` closes the outline. A direction on its own then Enter (`L` Enter) runs the wall until it lines up with the next corner already drawn; Enter again carries it on to the corner after that (corners of other areas count too), so you can square up to an earlier wall without adding up the runs. The walls box can sit under the drawing, above it, on either side, or float over it: pick from the small list beside it (floating: drag it by the word Walls).
 
 ## Working on the drawing
 

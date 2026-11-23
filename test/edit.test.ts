@@ -290,6 +290,14 @@ describe("bare direction then Enter", () => {
     expect(skipToCorner("R24 U30 L", 9, { x: 5, y: 5 })!.text).toBe("R24 U30 L24'\n");
   });
 
+  it("lines up with corners of other areas too", () => {
+    const garage = [{ x: -20, y: 0 }, { x: -20, y: 22 }];
+    expect(skipToCorner("R24 U30 L", 9, o, garage)!.text).toBe("R24 U30 L24'\n");
+    expect(skipToCorner("R24 U30 L24'\nL", 14, o, garage)!.text).toBe("R24 U30 L44'\n");
+    expect(skipToCorner("R24 U", 5, o)).toBeNull();
+    expect(skipToCorner("R24 U", 5, o, garage)!.text).toBe("R24 U22'\n");
+  });
+
   it("leaves Enter alone otherwise", () => {
     expect(skipToCorner("R24 U30", 7, o)).toBeNull(); // no bare direction
     expect(skipToCorner("R24 U", 5, o)).toBeNull(); // no corner above
