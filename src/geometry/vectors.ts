@@ -63,7 +63,12 @@ const RE_TURN_DIR_FIRST = new RegExp(`^(${CARD})(-?[0-9]+(?:\\.[0-9]+)?):(${LEN}
 
 const RE_DEGREES = /^-?[0-9]+(?:\.[0-9]+)?$/;
 const RE_SQUARE_DIR_FIRST = new RegExp(`^(${CARD})(${LEN})$`);
-const RE_SQUARE_LENGTH_FIRST = new RegExp(`^${LEN}?${CARD}$`);
+const RE_SQUARE_LENGTH_FIRST = new RegExp(`^(${LEN}?)(${CARD})$`);
+// Inches typed after a space, with no marks needed: 6, 6.5, 6-1/2 (an inch mark is allowed).
+const RE_INCHES = /^[0-9]+(?:\.[0-9]+)?(?:-[0-9]+\/[0-9]+)?"?$/;
+// The same, carrying a direction (and perhaps degrees) for length-first entry: "10 6R", "10 6R45".
+const RE_INCHES_THEN_DIR = new RegExp(`^[0-9]+(?:\\.[0-9]+)?(?:-[0-9]+\\/[0-9]+)?"?${CARD}(?:-?[0-9]+(?:\\.[0-9]+)?)?$`);
+const RE_WHOLE = /^[0-9]+$/;
 
 interface Move {
   dx: number;
@@ -182,32 +187,80 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
   let at = { ...start };
   let index = 0;
   let closed = false;
-  /** The wall just made, when it is a plain R/L/U/D wall that degrees typed next may turn. */
-  let turnable: { wall: string; heading: number | null; index: number } | null = null;
+  /**
+   * The wall just made, when it is a plain R/L/U/D wall that a number typed next may
+   * finish: inches while the length has no foot or inch mark, then degrees.
+   */
+  type Turnable = { dir: string; len: string; lengthFirst: boolean; heading: number | null; index: number };
+  let turnable: Turnable | null = null;
+  /** A whole number on its own, waiting to see whether inches and a direction follow ("10 6R"). */
+  let feet: { tok: string; offset: number; index: number } | null = null;
 
   // Blank out "# comments" to end of line, keeping character offsets.
   const clean = straightQuotes(text).replace(/#[^\n]*/g, (c) => " ".repeat(c.length));
 
-  for (const match of clean.matchAll(/[^\s,]+/g)) {
-    const tok = match[0];
+  const matches = [...clean.matchAll(/[^\s,]+/g)];
+  for (const [k, match] of matches.entries()) {
+    let tok = match[0];
+    // A whole number followed by inches and a direction is the feet of the next wall
+    // ("10 6R 30 0U"), not inches or degrees for the wall before.
+    const startsNext = RE_WHOLE.test(tok) && RE_INCHES_THEN_DIR.test((matches[k + 1]?.[0] ?? "").toUpperCase());
     const offset = match.index ?? 0;
     const i = index++;
+    if (feet) {
+      // "10 6R" is 10'6" to the right; a number followed by anything else is not a move.
+      const f = feet;
+      feet = null;
+      if (!closed && RE_INCHES_THEN_DIR.test(tok.toUpperCase())) tok = `${f.tok}'${tok}`;
+      else errors.push({ token: f.index, offset: f.offset, text: f.tok, message: `unknown move "${f.tok}"` });
+    }
     if (closed) {
       errors.push({ token: i, offset, text: tok, message: "move after CL" });
       continue;
     }
-    // "R10'6 45": degrees on their own after a square wall turn that wall, as "10'6R45" does.
-    if (turnable && turnable.index === i - 1 && RE_DEGREES.test(tok)) {
-      const turned = parseToken(`${turnable.wall}${tok}`, turnable.heading);
-      const seg = segments[segments.length - 1];
+    // A number on its own after a square wall finishes that wall. A space stands for the
+    // foot mark, so the first number is inches ("R10 6" is 10'6"); once the length is
+    // complete the next is degrees ("R10 6 45", "R10'6 45", "R10' 45"), a turn as in "10'6R45".
+    if (turnable && turnable.index === i - 1 && !startsNext && (RE_INCHES.test(tok) || RE_DEGREES.test(tok))) {
+      const t: Turnable = turnable;
+      const seg = segments[segments.length - 1]!;
+      const marked = /['"]/.test(t.len);
       turnable = null;
-      if (seg && "move" in turned) {
-        const to = { x: seg.from.x + turned.move.dx, y: seg.from.y + turned.move.dy };
-        segments[segments.length - 1] = { kind: "line", from: seg.from, to };
-        sources[sources.length - 1] = turned.as ?? null;
-        at = to;
+      const redo = (wall: string, heading: number | null): TokenResult => {
+        const made = parseToken(wall, heading);
+        if ("move" in made) {
+          const to = { x: seg.from.x + made.move.dx, y: seg.from.y + made.move.dy };
+          segments[segments.length - 1] = { kind: "line", from: seg.from, to };
+          at = to;
+        }
+        return made;
+      };
+      if (marked && RE_DEGREES.test(tok)) {
+        const made = redo(`${t.len}${t.dir}${tok}`, t.heading);
+        if ("move" in made) sources[sources.length - 1] = made.as ?? null;
+        else errors.push({ token: i, offset, text: tok, message: `unknown move "${tok}"` });
         continue;
       }
+      if (!marked && RE_WHOLE.test(t.len) && RE_INCHES.test(tok)) {
+        const len = `${t.len}'${tok}`;
+        const made = redo(`${len}${t.dir}`, null);
+        if ("move" in made) {
+          sources[sources.length - 1] = t.lengthFirst ? `${len}${t.dir}` : `${t.dir}${len}`;
+          turnable = { ...t, len, index: i };
+        } else {
+          const hint = RE_DEGREES.test(tok) ? ` (for degrees, end the length with a foot mark: ${t.dir}${t.len}' ${tok})` : "";
+          errors.push({ token: i, offset, text: tok, message: `"${tok}": inches must be under 12${hint}` });
+        }
+        continue;
+      }
+      if (!marked) {
+        errors.push({ token: i, offset, text: tok, message: `"${tok}": end the length with a foot mark before degrees (${t.dir}${t.len}' ${tok})` });
+        continue;
+      }
+    }
+    if (RE_WHOLE.test(tok)) {
+      feet = { tok, offset, index: i };
+      continue;
     }
     const last = segments[segments.length - 1];
     const heading = last ? (Math.atan2(last.to.y - last.from.y, last.to.x - last.from.x) * 180) / Math.PI : null;
@@ -241,8 +294,14 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
     at = to;
     const square = RE_SQUARE_DIR_FIRST.exec(tok.toUpperCase()) ?? null;
     const squareLf = square ? null : RE_SQUARE_LENGTH_FIRST.exec(tok.toUpperCase());
-    turnable = square ? { wall: `${square[2]}${square[1]}`, heading, index: i } : squareLf ? { wall: squareLf[0], heading, index: i } : null;
+    turnable = square
+      ? { dir: square[1]!, len: square[2]!, lengthFirst: false, heading, index: i }
+      : squareLf
+        ? { dir: squareLf[2]!, len: squareLf[1]!, lengthFirst: true, heading, index: i }
+        : null;
   }
+
+  if (feet) errors.push({ token: feet.index, offset: feet.offset, text: feet.tok, message: `unknown move "${feet.tok}"` });
 
   return { path: { start: { ...start }, segments }, errors, sources };
 }

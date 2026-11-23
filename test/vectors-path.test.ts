@@ -202,22 +202,47 @@ describe("closing and errors", () => {
     expect(parseVectors("R10'645").errors.length + parseVectors("R10'645").path.segments.length).toBe(1);
   });
 
-  it("turns: degrees after a space turn the wall before them", () => {
+  it("a space stands for the foot mark: the first number after a wall is inches", () => {
     const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
-    same("R10 r10'6 45", "10R 10'6r45");
-    same("R10 10'6r 45 U5", "10R 10'6r45 U5");
-    same("R10\nL10'6 45\nU22.5", "10R 10'6l45 U22.5");
-    same("12r 2.83r 45 4l 45 2.83l 45 12r 45", "12r 2.83r45 4l45 2.83l45 12r45");
-    const r = parseVectors("R10 R10'6 45 U5");
+    same("R10 6 U30 0 L10 6 CL", "R10'6 U30 L10'6 CL");
+    same("r10 6-1/2", "R10'6-1/2\"");
+    same("r10 6.5", "R10'6.5\"");
+    same("10 6r 30 0u", "R10'6 U30"); // length first
+    same("10 6-1/2r", "R10'6-1/2\"");
+    const r = parseVectors("R10 6 U5");
     expect(r.errors).toHaveLength(0);
-    expect(r.sources).toEqual(["R10", "A315:10'6", "U5"]);
-    // Only straight after a plain square wall: not after an angled one, a slope, or at the start.
+    expect(r.sources).toEqual(["R10'6", "U5"]);
+    expect(parseVectors("10 6r").sources).toEqual(["10'6r"]);
+  });
+
+  it("degrees come after a complete length", () => {
+    const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
+    same("R10 r10 6 45", "10R 10'6r45"); // inches, then degrees
+    same("R10 r10'6 45", "10R 10'6r45"); // marks, then degrees
+    same("R10 r10 0 45", "10R 10r45"); // whole feet: 0 inches, then degrees
+    same("R10 r10' 45", "10R 10r45"); // or a foot mark
+    same("R10 10 6r 45", "10R 10'6r45"); // length first
+    same("R10 10 6r45", "10R 10'6r45");
+    same("10 6r 45 6u", "10'6R U45'6"); // a number before inches-and-direction starts the next wall
+    same("R10 r6\" 45", "10R 6\"r45");
+    same("12r 2.83' r 45 4' l 45", "12r"); // marks must touch their number: these are not walls
+    same("12r r2.83' 45 l4 0 45 l2.83' 45 r12 0 45", "12r 2.83r45 4l45 2.83l45 12r45");
+    expect(parseVectors("R10 R10 6 45 U5").sources).toEqual(["R10", "A315:10'6", "U5"]);
+  });
+
+  it("a number that cannot be inches is an error, not a guess at degrees", () => {
+    const r = parseVectors("R10 R10 45 U5");
+    expect(r.errors.map((e) => e.text)).toEqual(["45"]);
+    expect(r.errors[0]!.message).toMatch(/inches must be under 12.*R10' 45/);
+    expect(r.path.segments).toHaveLength(3); // the wall stays 10', unturned
+    // Decimal feet take no inches.
+    expect(parseVectors("R10.5 6").errors[0]!.message).toMatch(/foot mark before degrees/);
+    // Numbers with nothing to belong to.
     expect(parseVectors("45 R10").errors.map((e) => e.text)).toEqual(["45"]);
     expect(parseVectors("R10 UR5 45").errors.map((e) => e.text)).toEqual(["45"]);
-    expect(parseVectors("R10 R5U5 45").errors.map((e) => e.text)).toEqual(["45"]);
-    expect(parseVectors("R10 R5 45 45").errors.map((e) => e.text)).toEqual(["45"]);
-    // A length (with a foot or inch mark) is never degrees.
+    expect(parseVectors("R10 R5 6 45 45").errors.map((e) => e.text)).toEqual(["45"]);
     expect(parseVectors("R10 45'").errors.map((e) => e.text)).toEqual(["45'"]);
+    expect(parseVectors("R10 CL 5").errors.map((e) => e.text)).toEqual(["5"]);
   });
 
   it("turns: recorded as absolute walls for rewrites", () => {
@@ -227,8 +252,8 @@ describe("closing and errors", () => {
   });
 
   it("length first: bad tokens are still reported as typed", () => {
-    const r = parseVectors("24R 5X 30U 10R5L 24 0R");
-    expect(r.errors.map((e) => e.text)).toEqual(["5X", "10R5L", "24", "0R"]);
+    const r = parseVectors("24R 5X 30U 10R5L 0R 24");
+    expect(r.errors.map((e) => e.text)).toEqual(["5X", "10R5L", "0R", "24"]);
     expect(r.errors[0]!.message).toBe('unknown move "5X"');
   });
 

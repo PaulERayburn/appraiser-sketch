@@ -42,7 +42,8 @@ Draw the house from your field notes, get gross living area and the other area t
 | `R4 DR2.83 R4 UR2.83 R4` | 45° bay (lengths along the wall) |
 | `R10U5` | One diagonal wall: run 10, rise 5 |
 | `A30:12` | 12' at 30° |
-| `10'6R45`, `R45:10'6` or `R10'6 45` | 10'6" turned 45° to the right of the wall just drawn (`L` turns left; with `U` or `D`, or as the first wall, the angle is clockwise from that direction) |
+| `R10 6` | 10'6": a space can stand for the foot mark, and the inch mark is never needed (`R10 6-1/2`, or `10 6R` length first) |
+| `10'6R45`, `R45:10'6`, `R10'6 45` or `R10 6 45` | 10'6" turned 45° to the right of the wall just drawn (`L` turns left; with `U` or `D`, or as the first wall, the angle is clockwise from that direction). After a space, degrees need a complete length first: `R10 0 45` or `R10' 45` for a whole 10' |
 | `R20^3` | Arc bulging 3' outward |
 | `CL` | Close back to the start |
 
