@@ -1,0 +1,599 @@
+{
+  "formatVersion": 1,
+  "meta": {
+    "ansi": true,
+    "subject": "Sample house (made up, not a real property)",
+    "detail": true,
+    "wallThickness": 0.6666666666666666,
+    "interiorWallThickness": 0.375
+  },
+  "structures": [
+    {
+      "id": "ssz",
+      "name": "Dwelling",
+      "kind": "dwelling",
+      "areas": [
+        {
+          "id": "ase",
+          "kind": "living",
+          "grade": "above",
+          "finished": true,
+          "level": "1",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Main floor",
+          "origin": {
+            "x": 0,
+            "y": 0
+          },
+          "vectors": "R16 U2 R8 D2 R18 U32 L42 CL",
+          "label": {
+            "x": -7,
+            "y": 5.5
+          },
+          "walls": [
+            {
+              "id": "ws1",
+              "origin": {
+                "x": 28,
+                "y": 32
+              },
+              "vectors": "D16 R14"
+            },
+            {
+              "id": "ws2",
+              "origin": {
+                "x": 28,
+                "y": 16
+              },
+              "vectors": "D16"
+            },
+            {
+              "id": "ws3",
+              "origin": {
+                "x": 28,
+                "y": 8
+              },
+              "vectors": "R14"
+            },
+            {
+              "id": "ws4",
+              "origin": {
+                "x": 24,
+                "y": 2
+              },
+              "vectors": "U6 R4"
+            },
+            {
+              "id": "ws5",
+              "origin": {
+                "x": 0,
+                "y": 18
+              },
+              "vectors": "R12"
+            }
+          ],
+          "doors": [
+            {
+              "id": "ds6",
+              "at": {
+                "x": 20,
+                "y": 2
+              },
+              "angle": 0,
+              "width": 3,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "ds7",
+              "at": {
+                "x": 0,
+                "y": 4
+              },
+              "angle": 270,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "ds8",
+              "at": {
+                "x": 22,
+                "y": 32
+              },
+              "angle": 180,
+              "width": 6,
+              "style": "sliding",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "ds9",
+              "at": {
+                "x": 31,
+                "y": 16
+              },
+              "angle": 0,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "dsa",
+              "at": {
+                "x": 38.5,
+                "y": 16
+              },
+              "angle": 0,
+              "width": 2.5,
+              "style": "swing",
+              "hinge": "a",
+              "side": -1
+            },
+            {
+              "id": "dsb",
+              "at": {
+                "x": 28,
+                "y": 4
+              },
+              "angle": 270,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "dsc",
+              "at": {
+                "x": 26,
+                "y": 8
+              },
+              "angle": 0,
+              "width": 2.3333333333333335,
+              "style": "swing",
+              "hinge": "b",
+              "side": -1
+            }
+          ],
+          "stairs": [
+            {
+              "id": "tsd",
+              "type": "steps",
+              "origin": {
+                "x": 17,
+                "y": 9
+              },
+              "rotation": 0,
+              "width": 3,
+              "run1": 12,
+              "run2": 4,
+              "turn": "right",
+              "direction": "up",
+              "plan": "6u sq r sq d6"
+            }
+          ]
+        },
+        {
+          "id": "asg",
+          "kind": "garage",
+          "grade": "above",
+          "finished": true,
+          "level": "1",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Garage",
+          "origin": {
+            "x": -22,
+            "y": 0
+          },
+          "vectors": "R22 U22 L22 CL",
+          "doors": [
+            {
+              "id": "dsf",
+              "at": {
+                "x": -11,
+                "y": 0
+              },
+              "angle": 0,
+              "width": 16,
+              "style": "overhead",
+              "hinge": "a",
+              "side": 1
+            }
+          ]
+        },
+        {
+          "id": "ash",
+          "kind": "deck",
+          "grade": "above",
+          "finished": true,
+          "level": "1",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Deck",
+          "origin": {
+            "x": 18,
+            "y": 32
+          },
+          "vectors": "R16 U12 L16 CL"
+        },
+        {
+          "id": "asi",
+          "kind": "porch",
+          "grade": "above",
+          "finished": true,
+          "level": "1",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Covered porch",
+          "origin": {
+            "x": 16,
+            "y": -4
+          },
+          "vectors": "R8 U6 L8 CL",
+          "hideDims": true,
+          "label": {
+            "x": 0,
+            "y": -1.2
+          }
+        },
+        {
+          "id": "asq",
+          "kind": "living",
+          "grade": "above",
+          "finished": true,
+          "level": "2",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Second floor",
+          "origin": {
+            "x": 52,
+            "y": 0
+          },
+          "vectors": "R28 U30 L28 CL",
+          "label": {
+            "x": -1,
+            "y": -1.6
+          },
+          "walls": [
+            {
+              "id": "wsj",
+              "origin": {
+                "x": 52,
+                "y": 16
+              },
+              "vectors": "R28"
+            },
+            {
+              "id": "wsk",
+              "origin": {
+                "x": 66,
+                "y": 16
+              },
+              "vectors": "U14"
+            },
+            {
+              "id": "wsl",
+              "origin": {
+                "x": 70,
+                "y": 0
+              },
+              "vectors": "U8 R10"
+            }
+          ],
+          "doors": [
+            {
+              "id": "dsm",
+              "at": {
+                "x": 62,
+                "y": 16
+              },
+              "angle": 0,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "dsn",
+              "at": {
+                "x": 70,
+                "y": 16
+              },
+              "angle": 0,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "b",
+              "side": 1
+            },
+            {
+              "id": "dso",
+              "at": {
+                "x": 70,
+                "y": 4
+              },
+              "angle": 90,
+              "width": 2.5,
+              "style": "swing",
+              "hinge": "a",
+              "side": -1
+            }
+          ],
+          "stairs": [
+            {
+              "id": "tsp",
+              "type": "steps",
+              "origin": {
+                "x": 57,
+                "y": 3
+              },
+              "rotation": 0,
+              "width": 3,
+              "run1": 12,
+              "run2": 4,
+              "turn": "right",
+              "direction": "down",
+              "plan": "6u sq r sq d6"
+            }
+          ]
+        },
+        {
+          "id": "asx",
+          "kind": "living",
+          "grade": "below",
+          "finished": true,
+          "level": "basement",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Finished basement",
+          "origin": {
+            "x": 0,
+            "y": -40
+          },
+          "vectors": "R26 U28 R16 U4 L42 CL",
+          "label": {
+            "x": -5.5,
+            "y": -5.5
+          },
+          "walls": [
+            {
+              "id": "wsr",
+              "origin": {
+                "x": 0,
+                "y": -24
+              },
+              "vectors": "R13 U16"
+            },
+            {
+              "id": "wss",
+              "origin": {
+                "x": 13,
+                "y": -19
+              },
+              "vectors": "R9 U11"
+            }
+          ],
+          "doors": [
+            {
+              "id": "dst",
+              "at": {
+                "x": 9,
+                "y": -24
+              },
+              "angle": 0,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "dsu",
+              "at": {
+                "x": 17.5,
+                "y": -19
+              },
+              "angle": 0,
+              "width": 2.5,
+              "style": "swing",
+              "hinge": "a",
+              "side": 1
+            },
+            {
+              "id": "dsv",
+              "at": {
+                "x": 26,
+                "y": -28
+              },
+              "angle": 90,
+              "width": 2.6666666666666665,
+              "style": "swing",
+              "hinge": "a",
+              "side": -1
+            }
+          ],
+          "stairs": [
+            {
+              "id": "tsw",
+              "type": "steps",
+              "origin": {
+                "x": 17,
+                "y": -31
+              },
+              "rotation": 0,
+              "width": 3,
+              "run1": 12,
+              "run2": 4,
+              "turn": "right",
+              "direction": "up",
+              "plan": "6u sq r sq d6"
+            }
+          ]
+        },
+        {
+          "id": "asy",
+          "kind": "living",
+          "grade": "below",
+          "finished": false,
+          "level": "basement",
+          "connected": true,
+          "ceiling": "full",
+          "zones": [],
+          "name": "Unfinished basement",
+          "origin": {
+            "x": 26,
+            "y": -40
+          },
+          "vectors": "R16 U28 L16 CL"
+        }
+      ]
+    }
+  ],
+  "texts": [
+    {
+      "id": "xs10",
+      "text": "Living Room",
+      "at": {
+        "x": 8,
+        "y": 10
+      }
+    },
+    {
+      "id": "xs11",
+      "text": "Kitchen",
+      "at": {
+        "x": 7,
+        "y": 26
+      }
+    },
+    {
+      "id": "xs12",
+      "text": "Dining Room",
+      "at": {
+        "x": 21,
+        "y": 27
+      }
+    },
+    {
+      "id": "xs13",
+      "text": "Foyer",
+      "at": {
+        "x": 20,
+        "y": 5.5
+      }
+    },
+    {
+      "id": "xs14",
+      "text": "Primary Bedroom",
+      "at": {
+        "x": 35,
+        "y": 26
+      }
+    },
+    {
+      "id": "xs15",
+      "text": "Full Bath",
+      "at": {
+        "x": 35,
+        "y": 12
+      }
+    },
+    {
+      "id": "xs16",
+      "text": "Office",
+      "at": {
+        "x": 35,
+        "y": 4
+      }
+    },
+    {
+      "id": "xs17",
+      "text": "Half Bath",
+      "at": {
+        "x": 26,
+        "y": 10.5
+      }
+    },
+    {
+      "id": "xs18",
+      "text": "Bedroom",
+      "at": {
+        "x": 59,
+        "y": 24
+      }
+    },
+    {
+      "id": "xs19",
+      "text": "Bedroom",
+      "at": {
+        "x": 73,
+        "y": 24
+      }
+    },
+    {
+      "id": "xs1a",
+      "text": "Full Bath",
+      "at": {
+        "x": 75,
+        "y": 4
+      }
+    },
+    {
+      "id": "xs1b",
+      "text": "Bonus Room",
+      "at": {
+        "x": 74,
+        "y": 12
+      }
+    },
+    {
+      "id": "xs1c",
+      "text": "Family Room",
+      "at": {
+        "x": 9,
+        "y": -35
+      }
+    },
+    {
+      "id": "xs1d",
+      "text": "Bedroom",
+      "at": {
+        "x": 6.5,
+        "y": -14
+      }
+    },
+    {
+      "id": "xs1e",
+      "text": "Full Bath",
+      "at": {
+        "x": 17.5,
+        "y": -13
+      }
+    },
+    {
+      "id": "xs1f",
+      "text": "Mechanical",
+      "at": {
+        "x": 34,
+        "y": -32
+      }
+    },
+    {
+      "id": "xs1g",
+      "text": "Storage",
+      "at": {
+        "x": 34,
+        "y": -20
+      }
+    }
+  ]
+}
