@@ -315,6 +315,7 @@ details[open] { display: flex; flex-direction: column; gap: 6px; }
 .add-menu-body button small { display: block; color: var(--muted); font-size: 11px; }
 .ctx-menu { min-width: 190px; }
 .ctx-menu.hidden { display: none; }
+.ctx-menu .more { float: right; color: var(--muted); margin-left: 12px; }
 .ctx-menu button.danger { color: var(--warn); }
 .add-menu-body hr { border: none; border-top: 1px solid var(--line); margin: 3px 0; }
 .settings { position: relative; }

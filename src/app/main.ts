@@ -2984,12 +2984,13 @@ vectorLabel.addEventListener("pointerdown", (e) => {
 
 // ---------- right-click menus ----------
 
-type MenuItem = { label: string; hint?: string; danger?: boolean; run: () => void } | "sep";
+type MenuItem = { label: string; hint?: string; danger?: boolean; run?: () => void; sub?: () => MenuItem[] } | "sep";
 const ctxMenu = document.createElement("div");
 ctxMenu.className = "add-menu-body ctx-menu hidden";
 ctxMenu.setAttribute("role", "menu");
 document.body.append(ctxMenu);
 let ctxItems: MenuItem[] = [];
+let ctxAt = { x: 0, y: 0 };
 
 function closeMenu() {
   ctxMenu.classList.add("hidden");
@@ -2997,11 +2998,12 @@ function closeMenu() {
 
 function openMenu(x: number, y: number, items: MenuItem[]) {
   ctxItems = items;
+  ctxAt = { x, y };
   ctxMenu.innerHTML = items
     .map((it, k) =>
       it === "sep"
         ? "<hr />"
-        : `<button role="menuitem" data-item="${k}"${it.danger ? ' class="danger"' : ""}>${esc(it.label)}${it.hint ? `<small>${esc(it.hint)}</small>` : ""}</button>`,
+        : `<button role="menuitem" data-item="${k}"${it.danger ? ' class="danger"' : ""}>${esc(it.label)}${it.sub ? '<span class="more">▸</span>' : ""}${it.hint ? `<small>${esc(it.hint)}</small>` : ""}</button>`,
     )
     .join("");
   ctxMenu.classList.remove("hidden");
@@ -3015,9 +3017,47 @@ function openMenu(x: number, y: number, items: MenuItem[]) {
 ctxMenu.addEventListener("click", (e) => {
   const k = (e.target as Element).closest("[data-item]")?.getAttribute("data-item");
   const it = k === null || k === undefined ? undefined : ctxItems[Number(k)];
+  if (it && it !== "sep" && it.sub) {
+    openMenu(ctxAt.x, ctxAt.y, it.sub()); // the choices take the menu's place
+    return;
+  }
   closeMenu();
-  if (it && it !== "sep") it.run();
+  if (it && it !== "sep") it.run?.();
 });
+
+/** A menu item that offers a drop-down's choices, ticking the current one; picking one sets it as the drop-down would. */
+function choiceItem(label: string, select: HTMLSelectElement): MenuItem[] {
+  if (select.disabled || select.closest(".hidden")) return [];
+  const current = select.selectedOptions[0]?.textContent ?? "";
+  return [
+    {
+      label,
+      hint: current,
+      sub: () =>
+        [...select.options].map((o) => ({
+          label: `${o.value === select.value ? "✓ " : "\u2003 "}${o.textContent ?? o.value}`,
+          run: () => {
+            select.value = o.value;
+            select.dispatchEvent(new Event("change", { bubbles: true }));
+          },
+        })),
+    },
+  ];
+}
+
+/** A menu item that flips a checkbox, showing how it stands now. */
+function toggleItem(label: string, box: HTMLInputElement): MenuItem[] {
+  if (box.disabled || box.closest(".hidden")) return [];
+  return [
+    {
+      label: `${box.checked ? "✓ " : "\u2003 "}${label}`,
+      run: () => {
+        box.checked = !box.checked;
+        box.dispatchEvent(new Event("change", { bubbles: true }));
+      },
+    },
+  ];
+}
 ctxMenu.addEventListener("contextmenu", (e) => e.preventDefault());
 document.addEventListener("pointerdown", (e) => {
   if (!ctxMenu.contains(e.target as Node)) closeMenu();
@@ -3043,7 +3083,13 @@ function areaMenu(): MenuItem[] {
   const open = walls > 0 && r !== undefined && !r.shape.closure.closed;
   const items: MenuItem[] = [
     { label: "Rename area", run: () => renameIn(props.panel, props.name) },
-    { label: "Change level", hint: `now ${f.area.level.trim() || "not set"}: a number, basement, attic…`, run: () => renameIn(props.panel, props.level) },
+    ...choiceItem("Type", props.kind),
+    { label: "Level", hint: `${f.area.level.trim() || "not set"} (a number, basement, attic…)`, run: () => renameIn(props.panel, props.level) },
+    ...choiceItem("Grade", props.grade),
+    ...choiceItem("Ceiling", props.ceiling),
+    ...toggleItem("Finished", props.finished),
+    ...toggleItem("Connected to finished space", props.connected),
+    "sep",
     { label: "Duplicate", hint: "an exact copy beside it", run: () => copySelectedArea("exact") },
     "sep",
   ];
@@ -3065,6 +3111,7 @@ function areaMenu(): MenuItem[] {
 function structureMenu(): MenuItem[] {
   return [
     { label: "Rename structure", run: () => renameIn(sprops.panel, sprops.name) },
+    ...choiceItem("Type", sprops.kind),
     { label: "Add area…", run: () => { const d = $<HTMLDetailsElement>("add-area"); d.open = true; d.querySelector("summary")?.focus(); } },
     "sep",
     { label: "Delete structure", danger: true, run: () => $("btn-delete-structure").click() },
