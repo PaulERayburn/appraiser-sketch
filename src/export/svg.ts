@@ -4,7 +4,7 @@
  * styles so it looks the same whatever the screen theme.
  */
 
-import { bounds, flatten, stairDrawing, type Bounds, type SketchResult } from "../geometry/index.js";
+import { bounds, flatten, showsDetail, stairDrawing, type Bounds, type SketchResult } from "../geometry/index.js";
 import { labelPoint, renderSketch, type View } from "../app/render.js";
 
 /** Print styles; text sizes are the screen's, times `k`, so labels keep their place relative to the walls. */
@@ -57,7 +57,7 @@ export function drawingBounds(result: SketchResult): Bounds | null {
       const ab = bounds(a.shape.path);
       add(ab.minX, ab.minY);
       add(ab.maxX, ab.maxY);
-      for (const st of a.area.stairs ?? []) for (const p of stairDrawing(st).parts.flat()) add(p.x, p.y);
+      if (showsDetail(result.sketch)) for (const st of a.area.stairs ?? []) for (const p of stairDrawing(st).parts.flat()) add(p.x, p.y);
       if (flatten(a.shape.path).length >= 3) {
         const lp = labelPoint(a);
         add(lp.x, lp.y);

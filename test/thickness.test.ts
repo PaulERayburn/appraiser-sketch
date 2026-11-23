@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { area, flatten, hasWalls, insetPolygon, parseVectors } from "../src/geometry/index.js";
+import { area, flatten, hasWalls, insetPolygon, parseVectors, showsDetail } from "../src/geometry/index.js";
 
 const corners = (text: string) => flatten(parseVectors(text).path, Math.PI / 48);
 const size = (poly: { x: number; y: number }[]) => Math.abs(poly.reduce((a, p, i) => a + p.x * poly[(i + 1) % poly.length]!.y - poly[(i + 1) % poly.length]!.x * p.y, 0) / 2);
@@ -65,5 +65,27 @@ describe("the inside face of the walls", () => {
   it("only rooms have walls to draw", () => {
     expect(["living", "garage", "other"].map((k) => hasWalls(k as never))).toEqual([true, true, true]);
     expect(["deck", "porch", "patio", "carport", "breezeway"].map((k) => hasWalls(k as never))).toEqual([false, false, false, false, false]);
+  });
+});
+
+describe("floor plan detail on or off", () => {
+  const sketch = (meta: object, area: object = {}) =>
+    ({ formatVersion: 1, meta: { ansi: true, ...meta }, structures: [{ id: "s", name: "Dwelling", kind: "dwelling", areas: [{ id: "a", zones: [], ...area }] }] }) as never;
+
+  it("a sketch with none stays basic until it is turned on", () => {
+    expect(showsDetail(sketch({}))).toBe(false);
+    expect(showsDetail(sketch({ detail: true }))).toBe(true);
+  });
+
+  it("a sketch that already has some shows it, so nothing drawn before goes missing", () => {
+    expect(showsDetail(sketch({}, { stairs: [{}] }))).toBe(true);
+    expect(showsDetail(sketch({}, { walls: [{}] }))).toBe(true);
+    expect(showsDetail(sketch({}, { doors: [{}] }))).toBe(true);
+    expect(showsDetail(sketch({ wallThickness: 0.5 }))).toBe(true);
+    expect(showsDetail(sketch({}, { stairs: [], walls: [], doors: [] }))).toBe(false);
+  });
+
+  it("turned off, it stays off even with detail in the sketch", () => {
+    expect(showsDetail(sketch({ detail: false, wallThickness: 0.5 }, { stairs: [{}], doors: [{}] }))).toBe(false);
   });
 });

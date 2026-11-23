@@ -39,6 +39,8 @@ import {
   zoneShort,
   DOOR_STYLES,
   WALL_PRESETS,
+  hasDetail,
+  showsDetail,
   applyArrow,
   defaultDoor,
   snapToWall,
@@ -2683,6 +2685,9 @@ function drawToolbar() {
   $<HTMLButtonElement>("btn-redo").disabled = !store.canRedo;
   syncCheck($<HTMLInputElement>("show-dims"), store.state.sketch.meta.showDims !== false);
   syncCheck($<HTMLInputElement>("show-labels"), store.state.sketch.meta.showLabels !== false);
+  const detail = showsDetail(store.state.sketch);
+  syncCheck($<HTMLInputElement>("show-detail"), detail);
+  document.body.classList.toggle("no-detail", !detail);
   const ansi = $<HTMLInputElement>("ansi-mode");
   if (ansi.checked !== store.state.sketch.meta.ansi) ansi.checked = store.state.sketch.meta.ansi;
   const dirty = store.revision !== savedRevision;
@@ -2967,6 +2972,23 @@ $<HTMLInputElement>("show-dims").addEventListener("change", (e) => {
     else draft.meta.showDims = false;
   });
 });
+// Floor plan detail: off for a basic plan, on for stairs, doors, interior walls and wall thickness.
+$<HTMLInputElement>("show-detail").addEventListener("change", (e) => {
+  const on = (e.target as HTMLInputElement).checked;
+  if (!on) {
+    if (drawing) finishDrawingWalls();
+    stopPlacing();
+  }
+  const had = hasDetail(store.state.sketch);
+  store.update((draft) => {
+    draft.meta.detail = on;
+    const sel = store.state.selection;
+    // Nothing stays picked that is no longer on the drawing.
+    return !on && sel ? { structure: sel.structure, area: sel.area } : undefined;
+  });
+  say(on ? "Detail on: stairs, doors, interior walls and wall thickness" : had ? "Detail off: kept with the sketch, back when you turn it on" : "Detail off: outlines and areas only");
+});
+
 $<HTMLInputElement>("show-labels").addEventListener("change", (e) => {
   const on = (e.target as HTMLInputElement).checked;
   store.update((draft) => {
@@ -3367,6 +3389,7 @@ function areaMenu(): MenuItem[] {
   const r = result.structures.flatMap((s) => s.areas).find((a) => a.area.id === f.area.id);
   const walls = r?.shape.path.segments.length ?? 0;
   const open = walls > 0 && r !== undefined && !r.shape.closure.closed;
+  const detail = showsDetail(store.state.sketch);
   const items: MenuItem[] = [
     { label: "Rename area", run: () => renameIn(props.panel, props.name) },
     ...choiceItem("Type", props.kind),
@@ -3383,8 +3406,8 @@ function areaMenu(): MenuItem[] {
   if (open) items.push({ label: "Delete last wall", run: () => void deleteWallAction() });
   else if (walls > 0) items.push({ label: "Open outline", hint: "removes the closing wall", run: () => void deleteWallAction() });
   items.push(
-    { label: "Add stair", run: () => $("btn-add-stair").click() },
-    ...(f.area.stairs ?? []).map((st, k): MenuItem => ({
+    ...(detail ? [{ label: "Add stair", run: () => $("btn-add-stair").click() } as MenuItem] : []),
+    ...(detail ? (f.area.stairs ?? []) : []).map((st, k): MenuItem => ({
       label: `Delete stair ${k + 1}`,
       hint: STAIR_TYPE_SHORT[st.type] ?? "",
       danger: true,
@@ -3396,8 +3419,12 @@ function areaMenu(): MenuItem[] {
       },
     })),
     { label: "Add ceiling zone or opening", run: () => $("btn-show-zones").click() },
-    { label: "Draw interior walls", run: () => iwallButton.click() },
-    { label: "Add door", hint: "then click a wall", run: () => startPlacing() },
+    ...(detail
+      ? ([
+          { label: "Draw interior walls", run: () => iwallButton.click() },
+          { label: "Add door", hint: "then click a wall", run: () => startPlacing() },
+        ] as MenuItem[])
+      : []),
     "sep",
     { label: "Fit to window", run: () => { setAutoFit(true); fit(); } },
     "sep",
@@ -3447,7 +3474,14 @@ function structureMenu(): MenuItem[] {
 }
 
 function sketchMenu(): MenuItem[] {
+  const detail = showsDetail(store.state.sketch);
   return [
+    {
+      label: `${detail ? "✓ " : "\u2003 "}Floor plan detail`,
+      hint: "stairs, doors, interior walls, wall thickness",
+      run: () => $<HTMLInputElement>("show-detail").click(),
+    },
+    "sep",
     { label: "Fit to window", run: () => { setAutoFit(true); fit(); } },
     { label: "Undo", run: () => undo() },
     { label: "Redo", run: () => redo() },

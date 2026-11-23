@@ -39,6 +39,7 @@
         <span class="muted">Show</span>
         <label class="toggle" title="Wall dimensions (also on the printed sketch)"><input type="checkbox" id="show-dims" checked /> Dimensions</label>
         <label class="toggle" title="Area names and sizes (also on the printed sketch)"><input type="checkbox" id="show-labels" checked /> Labels</label>
+        <label class="toggle" title="Floor plan detail: stairs, doors, interior walls and wall thickness. Off keeps the sketch to outlines and areas, and hides those tools. Nothing is deleted; it never changes an area."><input type="checkbox" id="show-detail" /> Detail</label>
         <label class="toggle" title="Background grid (screen only)"><input type="checkbox" id="show-grid" checked /> Grid</label>
         <label class="toggle" title="Inside angle at each corner of the selected area (screen only)"><input type="checkbox" id="show-angles" checked /> Angles</label>
         <label class="toggle" title="Keep the whole sketch in view as you draw. Zooming or panning by hand turns it off; F or Fit turns it back on."><input type="checkbox" id="auto-fit" checked /> Auto fit</label>
@@ -161,10 +162,10 @@
             </details>
             <div class="row-buttons add-row">
               <span class="muted">Add:</span>
-              <button id="btn-add-stair" title="Add a stair to this area">+ Stair</button>
+              <button id="btn-add-stair" class="detail-only" title="Add a stair to this area">+ Stair</button>
               <button id="btn-show-zones" title="Mark low ceilings or space open to below">+ Ceiling / opening</button>
-              <button id="btn-add-iwall" title="Draw interior walls for a floor plan (they never change the area)">+ Interior wall</button>
-              <button id="btn-add-door" title="Put a door in a wall: click the wall where it goes (it never changes the area)">+ Door</button>
+              <button id="btn-add-iwall" class="detail-only" title="Draw interior walls for a floor plan (they never change the area)">+ Interior wall</button>
+              <button id="btn-add-door" class="detail-only" title="Put a door in a wall: click the wall where it goes (it never changes the area)">+ Door</button>
             </div>
             <div class="row-buttons">
               <details id="copy-walls" class="add-menu">
@@ -244,7 +245,7 @@
           </div>
         </section>
 
-        <section class="panel" id="stairs-panel">
+        <section class="panel detail-only" id="stairs-panel">
           <div class="panel-head">
             <h2>Stairs</h2>
             <button id="btn-add-stair-2" title="Add another stair to this area">+ Stair</button>
@@ -314,7 +315,7 @@
           </div>
         </section>
 
-        <section class="panel" id="doors-panel">
+        <section class="panel detail-only" id="doors-panel">
           <div class="panel-head">
             <h2>Doors</h2>
             <button id="btn-add-door-2" title="Add another door: click the wall where it goes">+ Door</button>
@@ -391,7 +392,7 @@
           <h2>Property</h2>
           <div class="form">
             <label>Property address <input id="m-subject" type="text" /></label>
-            <label title="How thick the walls are drawn. For the look of the plan only: outlines are still measured to the outside face, and no area changes.">Walls drawn
+            <label class="detail-only" title="How thick the walls are drawn. For the look of the plan only: outlines are still measured to the outside face, and no area changes.">Walls drawn
               <select id="m-walls">
                 <option value="line">As a single line</option>
                 <option value="2x4">2x4 framing, about 6"</option>
@@ -399,7 +400,7 @@
                 <option value="custom">Custom thickness…</option>
               </select>
             </label>
-            <div class="pair wall-fields hidden" id="wall-fields">
+            <div class="pair wall-fields detail-only hidden" id="wall-fields">
               <label title="Outside walls: framing, drywall and stucco or siding. Inches, or 0'8&quot;.">Outside <input id="m-wall-ext" type="text" inputmode="decimal" /></label>
               <label title="Interior walls: a 2x4 partition with drywall each side is about 4.5&quot;.">Interior <input id="m-wall-int" type="text" inputmode="decimal" /></label>
             </div>

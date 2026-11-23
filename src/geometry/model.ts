@@ -136,6 +136,12 @@ export interface SketchMeta {
   showDims?: boolean;
   /** Show area name/size labels (default true). */
   showLabels?: boolean;
+  /**
+   * Floor plan detail on or off: stairs, doors, interior walls and wall
+   * thickness. Off keeps the sketch to outlines and areas; the detail is kept
+   * but not drawn or offered. Unset: on only if the sketch has some (see showsDetail).
+   */
+  detail?: boolean;
   /** Outside walls drawn this thick, in feet (drawing only; unset = a single line). */
   wallThickness?: number;
   /** Interior walls drawn this thick, in feet (drawing only). */
@@ -186,6 +192,24 @@ export interface Sketch {
   structures: Structure[];
   /** Room and other free labels, drawn on top. */
   texts?: TextLabel[];
+}
+
+/** True if the sketch has any floor plan detail: a stair, door, interior wall, or a wall thickness. */
+export function hasDetail(sketch: Sketch): boolean {
+  return (
+    sketch.meta.wallThickness !== undefined ||
+    sketch.structures.some((s) => s.areas.some((a) => (a.stairs?.length ?? 0) > 0 || (a.walls?.length ?? 0) > 0 || (a.doors?.length ?? 0) > 0))
+  );
+}
+
+/**
+ * Whether floor plan detail is drawn and offered. A sketch that says so
+ * decides; one that does not (a new sketch, or an older file) shows detail
+ * only if it has some, so a basic sketch stays basic and nothing drawn before
+ * goes missing.
+ */
+export function showsDetail(sketch: Sketch): boolean {
+  return sketch.meta.detail ?? hasDetail(sketch);
 }
 
 export interface ShapeResult {

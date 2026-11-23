@@ -96,6 +96,8 @@ Click a stair to select it, then drag it or its round handles (flight lengths, w
 
 Each structure is named after its type (Dwelling, ADU, Detached garage, Barn, Shed, Outbuilding), numbered if repeated, until you type your own name.
 
+**Detail** (Show › Detail on the toolbar) turns the floor plan extras on: stairs, doors, interior walls and wall thickness. It is off for a new sketch, so a basic sketch is just outlines and areas with none of those tools in the way; a sketch that already has some opens with it on. Turning it off puts them away without deleting anything.
+
 **Wall thickness.** *Walls drawn* on the Property panel draws the walls to thickness: 2x4 framing (about 6"), 2x6 framing (about 8"), or your own figures, with interior walls at about 4.5". Outside walls are drawn inward from the outline, which stays the measured outside face, so no area changes.
 
 **Doors.** Press **+ Door** on the Area panel and click a wall, outline or interior, where the door goes. It opens into the area; the Doors panel sets its kind (swing, double, sliding, pocket, bifold, overhead, cased opening) and width, flips its hinge or swing, moves or deletes it. Doors are floor plan only and never change an area.

@@ -226,6 +226,8 @@ details[open] { display: flex; flex-direction: column; gap: 6px; }
 .wall-band { fill: var(--muted); fill-opacity: 0.55; stroke: var(--ink); stroke-width: 0.8; pointer-events: none; }
 .iwall.thick { stroke: var(--muted); stroke-opacity: 0.75; stroke-linecap: butt; }
 .wall-fields.hidden { display: none; }
+/* Detail off: a basic plan, with the stair, door, interior wall and wall thickness tools put away. */
+body.no-detail .detail-only { display: none !important; }
 .door-gap { stroke: var(--canvas); stroke-width: 4.5; pointer-events: none; }
 .door-leaf { fill: none; stroke: var(--ink); stroke-width: 1.2; pointer-events: none; }
 .door-leaf.dashed { stroke-dasharray: 5 4; }

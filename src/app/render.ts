@@ -15,6 +15,7 @@ import { cornerAngles, formatAngle,
   insetPolygon,
   snapToWall,
   seatDoor,
+  showsDetail,
   stairDrawing,
   wallSegments,
   stairHandles,
@@ -218,6 +219,8 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
   const interactive = opts.interactive ?? true;
   const ts = opts.textScale ?? 1;
   const meta = result.sketch.meta;
+  /** Off: a basic plan of outlines and areas; stairs, doors, interior walls and wall thickness are left out. */
+  const detail = showsDetail(result.sketch);
   const parts: string[] = opts.grid === false ? [] : [gridMarkup(v, width, height)];
   const labels: string[] = [];
   const handles: string[] = [];
@@ -236,7 +239,7 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       const scr = pts.map((p) => toScreen(v, p));
 
       // Outside walls drawn to thickness, inward from the measured (outside) face.
-      const wallT = meta.wallThickness && hasWalls(r.area.kind) && r.shape.closure.closed ? meta.wallThickness : undefined;
+      const wallT = detail && meta.wallThickness && hasWalls(r.area.kind) && r.shape.closure.closed ? meta.wallThickness : undefined;
       if (pts.length >= 3) {
         const d = `M${scr.map((p) => `${n(p.x)},${n(p.y)}`).join("L")}Z`;
         parts.push(`<path class="${cls}" ${data} d="${d}"/>`);
@@ -270,7 +273,7 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       }
 
       // Interior walls (floor plan only; they never change the area).
-      for (const w of r.walls) {
+      for (const w of detail ? r.walls : []) {
         const d = runPath(w.path, v);
         if (!d) continue;
         const wsel = selected && selection?.iwall === w.wall.id;
@@ -293,7 +296,7 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       }
 
       // Stairs (symbols only; they never change the area).
-      if (r.area.doors?.length) {
+      if (detail && r.area.doors?.length) {
         // Doors sit in the walls as they are now, so one stays put when its wall is nudged.
         const outline = wallSegments([r.shape.path]);
         const walls = [...outline, ...wallSegments(r.walls.map((w) => w.path))];
@@ -319,7 +322,7 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
           }
         }
       }
-      for (const st of r.area.stairs ?? []) {
+      for (const st of detail ? (r.area.stairs ?? []) : []) {
         const stairSelected = selected && selection?.stair === st.id;
         parts.push(stairMarkup(st, v, data, stairSelected));
         if (stairSelected && interactive) {

@@ -237,6 +237,7 @@ function readMeta(raw: unknown): SketchMeta {
       date: str(m, "date", "header"),
       showDims: bool(m, "showDims", "header"),
       showLabels: bool(m, "showLabels", "header"),
+      detail: bool(m, "detail", "header"),
       wallThickness: thickness(m, "wallThickness"),
       interiorWallThickness: thickness(m, "interiorWallThickness"),
     }),
