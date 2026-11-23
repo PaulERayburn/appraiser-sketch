@@ -323,8 +323,25 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
             parts.push(`<polyline class="door-leaf${sym.dashed ? " dashed" : ""}${on ? " selected" : ""}" points="${pts}"/>`);
           }
           if (interactive) {
+            // The whole symbol is the door to the mouse: the opening, the leaf and the space it swings
+            // through (or the pocket, the panels…), with a margin so a narrow one is still easy to hit.
+            const len = Math.hypot(sym.b.x - sym.a.x, sym.b.y - sym.a.y) || 1;
+            const ux = (sym.b.x - sym.a.x) / len;
+            const uy = (sym.b.y - sym.a.y) / len;
+            const pad = Math.max(0.3, 7 / v.scale);
+            let t0 = 0, t1 = len, d0 = 0, d1 = 0;
+            for (const p of sym.lines.flat()) {
+              const t = (p.x - sym.a.x) * ux + (p.y - sym.a.y) * uy;
+              const d = -(p.x - sym.a.x) * uy + (p.y - sym.a.y) * ux;
+              t0 = Math.min(t0, t);
+              t1 = Math.max(t1, t);
+              d0 = Math.min(d0, d);
+              d1 = Math.max(d1, d);
+            }
+            const corner = (t: number, d: number) => toScreen(v, { x: sym.a.x + ux * t - uy * d, y: sym.a.y + uy * t + ux * d });
+            const box = [corner(t0 - pad, d0 - pad), corner(t1 + pad, d0 - pad), corner(t1 + pad, d1 + pad), corner(t0 - pad, d1 + pad)];
             doorHits.push(
-              `<line class="door-hit${on ? " selected" : ""}" ${data} data-door="${esc(door.id)}" x1="${n(a.x)}" y1="${n(a.y)}" x2="${n(b.x)}" y2="${n(b.y)}"><title>Door: click to edit, right-click for more</title></line>`,
+              `<polygon class="door-hit${on ? " selected" : ""}" ${data} data-door="${esc(door.id)}" points="${box.map((p) => `${n(p.x)},${n(p.y)}`).join(" ")}"><title>Door: click to pick it, right-click for its options</title></polygon>`,
             );
           }
         }
