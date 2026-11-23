@@ -264,6 +264,36 @@ details[open] { display: flex; flex-direction: column; gap: 6px; }
   gap: 4px 10px;
 }
 .vector-label { font-weight: 600; padding-top: 4px; }
+.dock-select { font-size: 12px; padding: 1px 2px; color: var(--muted); max-width: 84px; }
+
+/* The walls box can sit on any side of the drawing, or float over it. */
+.work { position: relative; }
+.work[data-dock="top"] { flex-direction: column-reverse; }
+.work[data-dock="top"] .vector-bar { border-top: 0; border-bottom: 1px solid var(--line); }
+.work[data-dock="left"] { flex-direction: row-reverse; }
+.work[data-dock="right"] { flex-direction: row; }
+.work[data-dock="left"] .vector-bar, .work[data-dock="right"] .vector-bar, .work[data-dock="float"] .vector-bar {
+  display: flex; flex-direction: column; gap: 6px; width: 230px; flex: none; min-height: 0; border-top: 0;
+}
+.work[data-dock="left"] .vector-bar { border-right: 1px solid var(--line); }
+.work[data-dock="right"] .vector-bar { border-left: 1px solid var(--line); }
+.work[data-dock="left"] .vector-side, .work[data-dock="right"] .vector-side, .work[data-dock="float"] .vector-side {
+  flex-direction: row; align-items: center; gap: 10px;
+}
+.work[data-dock="left"] .vector-side .vector-label, .work[data-dock="right"] .vector-side .vector-label, .work[data-dock="float"] .vector-side .vector-label { padding-top: 0; }
+.work[data-dock="left"] .dock-select, .work[data-dock="right"] .dock-select, .work[data-dock="float"] .dock-select { margin-left: auto; }
+.work[data-dock="left"] #vectors, .work[data-dock="right"] #vectors { flex: 1; min-height: 6em; resize: none; }
+.work[data-dock="left"] .vector-status, .work[data-dock="right"] .vector-status { max-height: 40%; overflow: auto; }
+.work[data-dock="float"] .vector-bar {
+  position: absolute; z-index: 4; left: 12px; top: 12px; max-height: calc(100% - 24px);
+  border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+}
+.work[data-dock="float"] .vector-label { cursor: move; touch-action: none; }
+.work[data-dock="float"] .vector-status { overflow: auto; }
+.work[data-dock="top"] .tpl-body, .work[data-dock="left"] .tpl-body, .work[data-dock="right"] .tpl-body, .work[data-dock="float"] .tpl-body {
+  bottom: auto; top: calc(100% + 8px);
+}
+.work[data-dock="right"] .tpl-body { left: auto; right: 0; }
 .vector-side { display: flex; flex-direction: column; gap: 4px; position: relative; }
 .add-menu { position: relative; display: inline-block; }
 .add-menu summary { list-style: none; cursor: pointer; }
@@ -336,6 +366,10 @@ button.inline { padding: 0 7px; font-size: 12px; color: var(--accent); }
 @media (max-width: 900px) {
   .layout { grid-template-columns: 1fr; grid-template-rows: auto 60vh auto; }
   .sidebar, .totals { border: 0; border-bottom: 1px solid var(--line); }
+  /* One column: the walls box goes back under the drawing. */
+  .work[data-dock] { flex-direction: column; }
+  .work[data-dock] .vector-bar { position: static; width: auto; border: 0; border-top: 1px solid var(--line); border-radius: 0; box-shadow: none; }
+  .dock-select { display: none; }
 }
 
 /* ---------- printed sketch page ---------- */

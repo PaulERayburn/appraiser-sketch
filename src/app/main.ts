@@ -2831,6 +2831,83 @@ themeSelect.addEventListener("change", () => {
   drawCanvas();
 });
 
+// ---------- where the walls box sits (a per-viewer preference, kept in this browser only) ----------
+
+const DOCKS = ["bottom", "top", "left", "right", "float"] as const;
+type Dock = (typeof DOCKS)[number];
+const DOCK_KEY = "sketch:walls-dock";
+const FLOAT_KEY = "sketch:walls-float";
+const work = document.querySelector<HTMLElement>(".work")!;
+const vectorBar = document.querySelector<HTMLElement>(".vector-bar")!;
+const dockSelect = $<HTMLSelectElement>("walls-dock");
+
+function remember(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable; the choice lasts for this visit */
+  }
+}
+
+/** Put the floating box at (x, y) inside the work area, kept fully in view. */
+function placeFloat(x: number, y: number) {
+  const maxX = Math.max(0, work.clientWidth - vectorBar.offsetWidth);
+  const maxY = Math.max(0, work.clientHeight - vectorBar.offsetHeight);
+  vectorBar.style.left = `${Math.min(maxX, Math.max(0, x))}px`;
+  vectorBar.style.top = `${Math.min(maxY, Math.max(0, y))}px`;
+}
+
+function setDock(dock: Dock) {
+  work.dataset.dock = dock;
+  dockSelect.value = dock;
+  vectorBar.style.left = "";
+  vectorBar.style.top = "";
+  if (dock === "float") {
+    let at = { x: 12, y: 12 };
+    try {
+      const saved = JSON.parse(localStorage.getItem(FLOAT_KEY) ?? "null");
+      if (saved && typeof saved.x === "number" && typeof saved.y === "number") at = saved;
+    } catch {
+      /* no saved place */
+    }
+    placeFloat(at.x, at.y);
+  }
+}
+
+dockSelect.addEventListener("change", () => {
+  const dock = DOCKS.find((d) => d === dockSelect.value) ?? "bottom";
+  setDock(dock);
+  remember(DOCK_KEY, dock);
+});
+
+// Floating: drag the box by the word "Walls".
+vectorLabel.addEventListener("pointerdown", (e) => {
+  if (work.dataset.dock !== "float" || e.button !== 0) return;
+  e.preventDefault();
+  const from = { x: e.clientX - vectorBar.offsetLeft, y: e.clientY - vectorBar.offsetTop };
+  vectorLabel.setPointerCapture(e.pointerId);
+  const move = (ev: PointerEvent) => placeFloat(ev.clientX - from.x, ev.clientY - from.y);
+  const done = () => {
+    vectorLabel.removeEventListener("pointermove", move);
+    vectorLabel.removeEventListener("pointerup", done);
+    vectorLabel.removeEventListener("pointercancel", done);
+    remember(FLOAT_KEY, JSON.stringify({ x: vectorBar.offsetLeft, y: vectorBar.offsetTop }));
+  };
+  vectorLabel.addEventListener("pointermove", move);
+  vectorLabel.addEventListener("pointerup", done);
+  vectorLabel.addEventListener("pointercancel", done);
+});
+
+{
+  let saved: string | null = null;
+  try {
+    saved = localStorage.getItem(DOCK_KEY);
+  } catch {
+    /* storage unavailable */
+  }
+  setDock(DOCKS.find((d) => d === saved) ?? "bottom");
+}
+
 // ---------- wiring ----------
 
 let draftTimer = 0;
