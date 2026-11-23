@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { adjustLastWall as adjustWall, remapHiddenDims, setLengthStyle, tokenLength, applyArrow, area, deleteWall, moveCorners, closeOutline, closure, corners, moveToken, openAtCorner, parseVectors } from "../src/geometry/index.js";
+import { skipToCorner, adjustLastWall as adjustWall, remapHiddenDims, setLengthStyle, tokenLength, applyArrow, area, deleteWall, moveCorners, closeOutline, closure, corners, moveToken, openAtCorner, parseVectors } from "../src/geometry/index.js";
 
 describe("arrow keys", () => {
   it("turns a trailing length into a wall", () => {
@@ -261,5 +261,41 @@ describe("hidden dimensions follow their walls", () => {
     const r = moveCorners("R20 U10 L20 D10", o, [1, 2], { x: 2, y: 0 })!;
     expect(r.walls).toEqual([0, 1, 2, 3]);
     expect(remapHiddenDims(undefined, r.walls)).toEqual([]);
+  });
+});
+
+describe("bare direction then Enter", () => {
+  const o = { x: 0, y: 0 };
+  const house = "r10\nu5\nr30\nu20'6\nl10\nu15\n";
+
+  it("runs to the next corner that way", () => {
+    expect(skipToCorner(house + "l", house.length + 1, o)).toEqual({ text: house + "L20'\n", caret: house.length + 5 });
+  });
+
+  it("carries the same wall on to the corner after that", () => {
+    const once = skipToCorner(house + "l", house.length + 1, o)!.text;
+    const twice = skipToCorner(once + "l", once.length + 1, o)!;
+    expect(twice.text).toBe(house + "L30'\n");
+    // Now straight above the start: CL closes with a vertical wall.
+    expect(closure(parseVectors(twice.text, o).path).dx).toBeCloseTo(0);
+  });
+
+  it("keeps fractions exact", () => {
+    const r = skipToCorner("R10'3-1/2\" U8 R5 U4 L", 21, o)!;
+    expect(r.text).toBe("R10'3-1/2\" U8 R5 U4 L5'\n");
+    expect(skipToCorner(r.text + "L", r.text.length + 1, o)!.text).toBe("R10'3-1/2\" U8 R5 U4 L15'3-1/2\"\n");
+  });
+
+  it("works from a moved start point", () => {
+    expect(skipToCorner("R24 U30 L", 9, { x: 5, y: 5 })!.text).toBe("R24 U30 L24'\n");
+  });
+
+  it("leaves Enter alone otherwise", () => {
+    expect(skipToCorner("R24 U30", 7, o)).toBeNull(); // no bare direction
+    expect(skipToCorner("R24 U", 5, o)).toBeNull(); // no corner above
+    expect(skipToCorner("R24 L U30", 5, o)).toBeNull(); // not at the end
+    expect(skipToCorner("R24 U30 L24 CL L", 16, o)).toBeNull(); // already closed
+    expect(skipToCorner("R24 # note l", 12, o)).toBeNull(); // in a comment
+    expect(skipToCorner("R24 CL", 6, o)).toBeNull(); // CL is not a direction
   });
 });

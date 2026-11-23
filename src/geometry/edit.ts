@@ -135,6 +135,56 @@ export function applyArrow(text: string, caret: number, dir: "up" | "down" | "le
 }
 
 /**
+ * If the text before the caret ends with a bare direction ("L", "U"), with
+ * nothing after it, replace it with a wall in that direction that runs until
+ * it lines up with the next corner already drawn: "L" from the far side of a
+ * house stops straight above or below the nearest corner to its left. A
+ * second bare direction the same way carries the same wall on to the corner
+ * after that. Returns the new text (ending on a new line) and caret position,
+ * or null when there is no bare direction or no corner that way.
+ */
+export function skipToCorner(text: string, caret: number, origin: Point): { text: string; caret: number } | null {
+  if (text.slice(caret).trim() !== "") return null;
+  const before = text.slice(0, caret);
+  const m = /(^|[\s,])([lrud])$/i.exec(before);
+  if (!m) return null;
+  if (/#[^\n]*$/.test(before)) return null; // inside a # comment
+  let head = before.slice(0, -1);
+  const { path, sources } = parseVectors(head, origin);
+  if (path.segments.length > 0 && closure(path).closed) return null;
+  const pts = [path.start, ...path.segments.map((s) => s.to)];
+  const pen = pts[pts.length - 1]!;
+  const letter = m[2]!.toUpperCase() as "L" | "R" | "U" | "D";
+  const horizontal = letter === "L" || letter === "R";
+  const sign = letter === "R" || letter === "U" ? 1 : -1;
+  const tol = 1 / 96;
+  // How far that way each other corner is; the nearest one ahead is the stop.
+  const ahead = pts
+    .map((p) => sign * (horizontal ? p.x - pen.x : p.y - pen.y))
+    .filter((d) => d > tol);
+  if (ahead.length === 0) return null;
+  let run = Math.min(...ahead);
+
+  // Carry on a wall already running the same way rather than adding a second one in line with it.
+  const last = path.segments[path.segments.length - 1];
+  const src = sources[sources.length - 1];
+  if (last && src && last.kind === "line") {
+    const dx = last.to.x - last.from.x;
+    const dy = last.to.y - last.from.y;
+    const along = sign * (horizontal ? dx : dy);
+    const across = Math.abs(horizontal ? dy : dx);
+    const at = head.trimEnd().length - src.length;
+    if (along > tol && across < tol && at >= 0 && head.slice(at).trimEnd() === src) {
+      run += along;
+      head = head.slice(0, at);
+    }
+  }
+  const token = horizontal ? moveToken(sign * run, 0) : moveToken(0, sign * run);
+  const out = `${head}${token}\n`;
+  return { text: out, caret: out.length };
+}
+
+/**
  * Move corners of an outline by (dx, dy) and rewrite the walls to match: the
  * wall arriving at a moved corner and the wall leaving it change; everything
  * else keeps its typed text. Moving both ends of one wall slides that wall.

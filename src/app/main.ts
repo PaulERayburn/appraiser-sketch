@@ -37,6 +37,7 @@ import {
   zoneLabel,
   zoneShort,
   applyArrow,
+  skipToCorner,
   closeOutline,
   deleteWall,
   moveCorners,
@@ -1550,9 +1551,9 @@ vectors.addEventListener("input", () => {
   }
 });
 
-/** Grow the walls box with its text (2 to 8 lines) so the whole outline stays in view. */
+/** A tall walls box that grows with its text (5 to 14 lines), so the outline reads as a list of walls. */
 function fitVectorsBox() {
-  const rows = Math.min(8, Math.max(2, vectors.value.split("\n").length));
+  const rows = Math.min(14, Math.max(5, vectors.value.split("\n").length + 1));
   if (vectors.rows !== rows) vectors.rows = rows;
 }
 
@@ -1608,6 +1609,22 @@ function endAdjust(): boolean {
   return true;
 }
 
+/** "L" then Enter → a wall left as far as the next corner already drawn (outlines and zones, not interior walls). */
+function skipIntoWalls(): boolean {
+  const sel = store.state.selection;
+  const found = findArea(store.state.sketch, sel);
+  if (!found || vectors.disabled || sel?.iwall) return false;
+  if (vectors.selectionStart !== vectors.selectionEnd) return false;
+  const zone = sel?.zone ? found.area.zones.find((z) => z.id === sel.zone) : undefined;
+  if (sel?.zone && !zone) return false;
+  const r = skipToCorner(vectors.value, vectors.selectionStart ?? vectors.value.length, (zone ?? found.area).origin);
+  if (!r) return false;
+  vectors.value = r.text;
+  vectors.setSelectionRange(r.caret, r.caret);
+  vectors.dispatchEvent(new Event("input"));
+  return true;
+}
+
 /** "L24" then a → "L24 A": A closes the outline even typed straight after a wall. */
 function closeKeyIntoWalls(atEnd: boolean): boolean {
   if (vectors.disabled) return false;
@@ -1628,6 +1645,10 @@ vectors.addEventListener("keydown", (e) => {
     return;
   }
   if (e.key === "Enter" && endAdjust()) {
+    e.preventDefault();
+    return;
+  }
+  if (e.key === "Enter" && !e.shiftKey && skipIntoWalls()) {
     e.preventDefault();
     return;
   }
