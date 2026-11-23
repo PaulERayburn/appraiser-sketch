@@ -3042,7 +3042,8 @@ function areaMenu(): MenuItem[] {
   const walls = r?.shape.path.segments.length ?? 0;
   const open = walls > 0 && r !== undefined && !r.shape.closure.closed;
   const items: MenuItem[] = [
-    { label: "Rename", run: () => renameIn(props.panel, props.name) },
+    { label: "Rename area", run: () => renameIn(props.panel, props.name) },
+    { label: "Change level", hint: `now ${f.area.level.trim() || "not set"}: a number, basement, attic…`, run: () => renameIn(props.panel, props.level) },
     { label: "Duplicate", hint: "an exact copy beside it", run: () => copySelectedArea("exact") },
     "sep",
   ];
