@@ -33,6 +33,16 @@ Draw the house from your field notes, get gross living area and the other area t
 3. Use **+ Area** to add the next floor, basement, garage or deck, and **Labels** to name the rooms.
 4. **Print / PDF** (or Ctrl+P) for the exhibit; **Save** (Ctrl+S) to keep the sketch.
 
+## Sample house
+
+`docs/sample-house.sketch.json` is a made-up house to try things on (it is not a real property). Press **Open** and pick that file. It has a main floor with the primary bedroom, a second floor with two bedrooms, a basement that is part finished and part unfinished, an attached garage, a deck and a covered porch: 2,168 sf above grade, 896 sf finished and 448 sf unfinished below.
+
+The same sketch, both ways (the **Basic / Detailed** switch at the left of the toolbar). The areas and totals are identical; Detailed adds what makes it read as a floor plan.
+
+| Detailed: walls to thickness, interior walls, doors and stairs | Basic: outlines and areas only |
+| --- | --- |
+| ![The sample house as a detailed plan: 2x6 outside walls, interior walls, swing, sliding and overhead doors, and stairs on each level](docs/sample-house-detailed.png) | ![The same sample house as a basic plan: single-line outlines with dimensions, area names and sizes, and room labels](docs/sample-house-basic.png) |
+
 ## Entering walls
 
 | Type | Meaning |
