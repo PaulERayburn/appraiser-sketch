@@ -42,7 +42,8 @@ const DIAG: Record<string, Point> = {
   DL: { x: -1, y: -1 }, SW: { x: -1, y: -1 },
 };
 
-const LEN = String.raw`[0-9][0-9.'"\-/]*`;
+// A length, which may be a sum: 24'6-1/2", 10'6+4'6, 20'6+-10'.
+const LEN = String.raw`[0-9][0-9.'"\-/+−]*`;
 const CARD = "[RLUDNSEW]";
 const DIAGS = "UR|UL|DR|DL|NE|NW|SE|SW";
 const ARC = String.raw`(?:\^(-?${LEN}))?`;
@@ -66,9 +67,13 @@ const RE_SQUARE_DIR_FIRST = new RegExp(`^(${CARD})(${LEN})$`);
 const RE_SQUARE_LENGTH_FIRST = new RegExp(`^(${LEN}?)(${CARD})$`);
 // Inches typed after a space, with no marks needed: 6, 6.5, 6-1/2 (an inch mark is allowed).
 const RE_INCHES = /^[0-9]+(?:\.[0-9]+)?(?:-[0-9]+\/[0-9]+)?"?$/;
-// The same, carrying a direction (and perhaps degrees) for length-first entry: "10 6R", "10 6R45".
-const RE_INCHES_THEN_DIR = new RegExp(`^[0-9]+(?:\\.[0-9]+)?(?:-[0-9]+\\/[0-9]+)?"?${CARD}(?:-?[0-9]+(?:\\.[0-9]+)?)?$`);
 const RE_WHOLE = /^[0-9]+$/;
+// A + or - standing on its own between two lengths. (Inside a length a hyphen never subtracts.)
+const RE_OPERATOR = /^[+\-−]$/;
+// One plain length: 3, 3.5, 3'6, 6", 6-1/2".
+const RE_TERM = /^[0-9][0-9.'"\-/]*$/;
+// A length-first token: its numbers, then a direction, then perhaps degrees.
+const RE_NUMBER_THEN_DIR = new RegExp(`^(${LEN}?)${CARD}(?:-?[0-9]+(?:\\.[0-9]+)?)?$`);
 
 interface Move {
   dx: number;
@@ -188,43 +193,74 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
   let index = 0;
   let closed = false;
   /**
-   * The wall just made, when it is a plain R/L/U/D wall that a number typed next may
-   * finish: inches while the length has no foot or inch mark, then degrees.
+   * The wall just made, when it is a plain R/L/U/D wall that what is typed next may
+   * finish: inches while the length has no foot or inch mark, a + or - and another
+   * length, then degrees. `len` is the length so far, as text ("10'6+-3").
    */
-  type Turnable = { dir: string; len: string; lengthFirst: boolean; heading: number | null; index: number };
+  type Turnable = {
+    dir: string;
+    len: string;
+    lengthFirst: boolean;
+    heading: number | null;
+    index: number;
+    /** A + or - was typed and its length has not come yet. */
+    op?: { tok: string; offset: number; index: number };
+  };
   let turnable: Turnable | null = null;
-  /** A whole number on its own, waiting to see whether inches and a direction follow ("10 6R"). */
-  let feet: { tok: string; offset: number; index: number } | null = null;
 
   // Blank out "# comments" to end of line, keeping character offsets.
   const clean = straightQuotes(text).replace(/#[^\n]*/g, (c) => " ".repeat(c.length));
 
-  const matches = [...clean.matchAll(/[^\s,]+/g)];
-  for (const [k, match] of matches.entries()) {
+  // Length first, the numbers come before the direction, so gather them back from it:
+  // "10 6R" is 10'6" right, "10 6 - 3 6R" is 7' right. A number followed by inches and
+  // a direction therefore starts that wall; it is not inches or degrees for the wall before.
+  const toks: { tok: string; offset: number }[] = [];
+  for (const match of clean.matchAll(/[^\s,]+/g)) {
     let tok = match[0];
-    // A whole number followed by inches and a direction is the feet of the next wall
-    // ("10 6R 30 0U"), not inches or degrees for the wall before.
-    const startsNext = RE_WHOLE.test(tok) && RE_INCHES_THEN_DIR.test((matches[k + 1]?.[0] ?? "").toUpperCase());
-    const offset = match.index ?? 0;
-    const i = index++;
-    if (feet) {
-      // "10 6R" is 10'6" to the right; a number followed by anything else is not a move.
-      const f = feet;
-      feet = null;
-      if (!closed && RE_INCHES_THEN_DIR.test(tok.toUpperCase())) tok = `${f.tok}'${tok}`;
-      else errors.push({ token: f.index, offset: f.offset, text: f.tok, message: `unknown move "${f.tok}"` });
+    let offset = match.index ?? 0;
+    const lf = RE_NUMBER_THEN_DIR.exec(tok.toUpperCase());
+    if (lf) {
+      const rest = tok.slice(lf[1]!.length);
+      let expr = tok.slice(0, lf[1]!.length);
+      const prev = (back: number) => toks[toks.length - back]?.tok ?? "";
+      const take = (count: number) => {
+        offset = toks[toks.length - count]!.offset;
+        toks.length -= count;
+      };
+      if (RE_INCHES.test(expr) && !/'/.test(expr) && RE_WHOLE.test(prev(1))) {
+        expr = `${prev(1)}'${expr}`;
+        take(1);
+      }
+      while (RE_OPERATOR.test(prev(1)) && RE_TERM.test(prev(2))) {
+        const op = prev(1) === "+" ? "+" : "+-";
+        if (RE_INCHES.test(prev(2)) && !/'/.test(prev(2)) && RE_WHOLE.test(prev(3))) {
+          expr = `${prev(3)}'${prev(2)}${op}${expr}`;
+          take(3);
+        } else {
+          expr = `${prev(2)}${op}${expr}`;
+          take(2);
+        }
+      }
+      tok = expr + rest;
     }
+    toks.push({ tok, offset });
+  }
+
+  for (const { tok, offset } of toks) {
+    const i = index++;
     if (closed) {
       errors.push({ token: i, offset, text: tok, message: "move after CL" });
       continue;
     }
-    // A number on its own after a square wall finishes that wall. A space stands for the
-    // foot mark, so the first number is inches ("R10 6" is 10'6"); once the length is
-    // complete the next is degrees ("R10 6 45", "R10'6 45", "R10' 45"), a turn as in "10'6R45".
-    if (turnable && turnable.index === i - 1 && !startsNext && (RE_INCHES.test(tok) || RE_DEGREES.test(tok))) {
+    // What follows a square wall may finish it. A space stands for the foot mark, so the
+    // first number is inches ("R10 6" is 10'6"). A + or - on its own adds or takes off the
+    // next length ("R10 6 - 3 6" is 7'). Once the length is complete, a number is degrees
+    // ("R10 6 45", "R10'6 45", "R10' 45"): a turn, as in "10'6R45".
+    if (turnable && turnable.index === i - 1) {
       const t: Turnable = turnable;
       const seg = segments[segments.length - 1]!;
-      const marked = /['"]/.test(t.len);
+      const term = t.len.split(/\+-|[+−]/).pop() ?? "";
+      const marked = /['"]/.test(term);
       turnable = null;
       const redo = (wall: string, heading: number | null): TokenResult => {
         const made = parseToken(wall, heading);
@@ -235,32 +271,37 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
         }
         return made;
       };
-      if (marked && RE_DEGREES.test(tok)) {
+      const relength = (len: string, bad: string): void => {
+        const made = redo(`${len}${t.dir}`, null);
+        if ("move" in made) {
+          sources[sources.length - 1] = t.lengthFirst ? `${len}${t.dir}` : `${t.dir}${len}`;
+          turnable = { dir: t.dir, len, lengthFirst: t.lengthFirst, heading: t.heading, index: i };
+        } else {
+          errors.push({ token: i, offset, text: tok, message: bad });
+        }
+      };
+      if (t.op) {
+        if (RE_TERM.test(tok)) {
+          relength(`${t.len}${tok}`, `"${tok}": cannot ${t.op.tok === "+" ? "add" : "take off"} that length`);
+          continue;
+        }
+        errors.push({ token: t.op.index, offset: t.op.offset, text: t.op.tok, message: `"${t.op.tok}": no length after it` });
+      } else if (RE_OPERATOR.test(tok)) {
+        turnable = { ...t, len: `${t.len}${tok === "+" ? "+" : "+-"}`, index: i, op: { tok, offset, index: i } };
+        continue;
+      } else if (marked && RE_DEGREES.test(tok)) {
         const made = redo(`${t.len}${t.dir}${tok}`, t.heading);
         if ("move" in made) sources[sources.length - 1] = made.as ?? null;
         else errors.push({ token: i, offset, text: tok, message: `unknown move "${tok}"` });
         continue;
-      }
-      if (!marked && RE_WHOLE.test(t.len) && RE_INCHES.test(tok)) {
-        const len = `${t.len}'${tok}`;
-        const made = redo(`${len}${t.dir}`, null);
-        if ("move" in made) {
-          sources[sources.length - 1] = t.lengthFirst ? `${len}${t.dir}` : `${t.dir}${len}`;
-          turnable = { ...t, len, index: i };
-        } else {
-          const hint = RE_DEGREES.test(tok) ? ` (for degrees, end the length with a foot mark: ${t.dir}${t.len}' ${tok})` : "";
-          errors.push({ token: i, offset, text: tok, message: `"${tok}": inches must be under 12${hint}` });
-        }
+      } else if (!marked && RE_WHOLE.test(term) && RE_INCHES.test(tok)) {
+        const hint = RE_DEGREES.test(tok) ? ` (for degrees, end the length with a foot mark: ${t.dir}${t.len}' ${tok})` : "";
+        relength(`${t.len}'${tok}`, `"${tok}": inches must be under 12${hint}`);
         continue;
-      }
-      if (!marked) {
+      } else if (!marked && RE_DEGREES.test(tok)) {
         errors.push({ token: i, offset, text: tok, message: `"${tok}": end the length with a foot mark before degrees (${t.dir}${t.len}' ${tok})` });
         continue;
       }
-    }
-    if (RE_WHOLE.test(tok)) {
-      feet = { tok, offset, index: i };
-      continue;
     }
     const last = segments[segments.length - 1];
     const heading = last ? (Math.atan2(last.to.y - last.from.y, last.to.x - last.from.x) * 180) / Math.PI : null;
@@ -301,7 +342,8 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
         : null;
   }
 
-  if (feet) errors.push({ token: feet.index, offset: feet.offset, text: feet.tok, message: `unknown move "${feet.tok}"` });
+  const dangling = (turnable as Turnable | null)?.op;
+  if (dangling) errors.push({ token: dangling.index, offset: dangling.offset, text: dangling.tok, message: `"${dangling.tok}": no length after it` });
 
   return { path: { start: { ...start }, segments }, errors, sources };
 }

@@ -124,7 +124,7 @@ export function closeOutline(vectors: string): string {
  */
 export function applyArrow(text: string, caret: number, dir: "up" | "down" | "left" | "right"): { text: string; caret: number } | null {
   const before = text.slice(0, caret);
-  const m = /(^|[\s,])([0-9][0-9.'"\-/]*)$/.exec(before);
+  const m = /(^|[\s,])([0-9][0-9.'"\-/+−]*)$/.exec(before);
   if (!m) return null;
   const len = m[2]!;
   const letter = { up: "U", down: "D", left: "L", right: "R" }[dir];

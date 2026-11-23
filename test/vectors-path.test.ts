@@ -202,6 +202,43 @@ describe("closing and errors", () => {
     expect(parseVectors("R10'645").errors.length + parseVectors("R10'645").path.segments.length).toBe(1);
   });
 
+  it("lengths can be sums", () => {
+    const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
+    same("R10'6+4'6 U30 15'L CL", "R15 U30 L15 CL");
+    same("10'6+4'6R 20'6+-10'u", "R15 U10'6"); // length first
+    same("R10 10'6+4'6r45", "R10 15r45");
+    same("R10 R10'6+4'6 45", "R10 15r45");
+    same("R45:10'6+4'6", "15r45");
+    same("R10+2U5+1", "R12U6");
+    expect(parseVectors("R10'6+4'6 U5").sources).toEqual(["R10'6+4'6", "U5"]); // kept as measured
+    expect(parseVectors("R10'6+ U5").errors.map((e) => e.text)).toEqual(["R10'6+"]);
+  });
+
+  it("a + or - on its own adds or takes off the next length", () => {
+    const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
+    same("R10 6 - 3 6 U5", "R7 U5");
+    same("R10 6 + 4 6", "R15");
+    same("R10'6 - 3'6", "R7");
+    same("R10 6 - 3 6 + 1 0 45", "8r45"); // then degrees, once the last length is complete
+    same("R10 R10'6 + 4'6 45", "R10 15r45");
+    same("10 6 - 3 6r 5u", "R7 U5"); // length first
+    same("10 6 + 4 6r 45", "15r45");
+    same("12'4 + 6'5 + 3\"u", "U19");
+    same("R10 6 - 3 6r", "R10 2'6R"); // the numbers nearest a direction belong to it
+    expect(parseVectors("R10 6 - 3 6").sources).toEqual(["R10'6+-3'6"]);
+    expect(parseVectors("10 6 - 3 6r").errors).toHaveLength(0);
+  });
+
+  it("a + or - with nothing to work on is an error", () => {
+    expect(parseVectors("R10 - U5").errors.map((e) => e.text)).toEqual(["-"]);
+    expect(parseVectors("R10 +").errors.map((e) => e.text)).toEqual(["+"]);
+    expect(parseVectors("- R10").errors.map((e) => e.text)).toEqual(["-"]);
+    expect(parseVectors("R3 - 10").errors.map((e) => e.text)).toEqual(["10"]); // would be less than nothing
+    expect(parseVectors("UR5 + 3").errors.map((e) => e.text)).toEqual(["+", "3"]);
+    // A hyphen inside a length never subtracts: 24'-6" is someone's 24'6".
+    expect(parseVectors("R24'-6\"").errors).toHaveLength(1);
+  });
+
   it("a space stands for the foot mark: the first number after a wall is inches", () => {
     const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
     same("R10 6 U30 0 L10 6 CL", "R10'6 U30 L10'6 CL");

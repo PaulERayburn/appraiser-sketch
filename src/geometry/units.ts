@@ -6,13 +6,38 @@
  *   24'       24'6"     24'6      feet-inches
  *   6"        6-1/2"    inches, with optional fraction
  *   24'6-1/2" 24'6.5"   feet + fractional/decimal inches
+ *   10'6+4'6  20'6+-10' sums and differences of any of the above
  */
 
 const FEET_INCHES = /^(?:(\d+(?:\.\d+)?)')?(?:(\d+(?:\.\d+)?)(?:-(\d+)\/(\d+))?("?))?$/;
 
-/** Parse a length token to decimal feet, or return null if it is not a valid length. */
+/**
+ * Parse a length token to decimal feet, or return null if it is not a valid length.
+ * Lengths may be added up as they are measured: 10'6+4'6 is 15'. To take a piece
+ * off, use +- or a true minus sign: 20'6+-10' or 20'6−10'. A plain hyphen never
+ * subtracts, because 24'-6" and 6-1/2" are ordinary ways to write one length.
+ */
 export function parseLength(raw: string): number | null {
   const text = raw.trim().replace(/[’′]/g, "'").replace(/[”″]/g, '"');
+  if (!/[+−]/.test(text)) return parseOneLength(text);
+  let total = 0;
+  for (const [k, term] of text.split(/(?=[+−])/).entries()) {
+    const signed = /^[+−]/.test(term);
+    if (signed !== k > 0) return null; // no sign in front of the first length
+    let body = signed ? term.slice(1) : term;
+    let sign = term.startsWith("−") ? -1 : 1;
+    if (term.startsWith("+-")) {
+      sign = -1;
+      body = body.slice(1);
+    }
+    const v = parseOneLength(body);
+    if (v === null) return null;
+    total += sign * v;
+  }
+  return total > 1e-9 ? total : null;
+}
+
+function parseOneLength(text: string): number | null {
   if (text === "") return null;
 
   // Plain decimal feet (no unit marks).
