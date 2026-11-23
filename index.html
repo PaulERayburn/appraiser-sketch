@@ -164,6 +164,7 @@
               <button id="btn-add-stair" title="Add a stair to this area">+ Stair</button>
               <button id="btn-show-zones" title="Mark low ceilings or space open to below">+ Ceiling / opening</button>
               <button id="btn-add-iwall" title="Draw interior walls for a floor plan (they never change the area)">+ Interior wall</button>
+              <button id="btn-add-door" title="Put a door in a wall: click the wall where it goes (it never changes the area)">+ Door</button>
             </div>
             <div class="row-buttons">
               <details id="copy-walls" class="add-menu">
@@ -310,6 +311,25 @@
               <button id="btn-delete-stair" class="danger">Delete stair</button>
             </div>
             <div class="note-small"><span class="handles-note">Drag a stair to move it; drag its round handles to change the flights and width. </span> Stairs count on the floor above (ANSI Z765), so they don't change this area.</div>
+          </div>
+        </section>
+
+        <section class="panel" id="doors-panel">
+          <div class="panel-head">
+            <h2>Doors</h2>
+            <button id="btn-add-door-2" title="Add another door: click the wall where it goes">+ Door</button>
+          </div>
+          <div id="door-list" class="chips"></div>
+          <div class="form" id="door-form">
+            <label>Kind <select id="dr-style"></select></label>
+            <label>Width <input id="dr-width" type="text" inputmode="decimal" /></label>
+            <div class="row-buttons">
+              <button id="btn-door-hinge" title="Hang it on the other jamb">Flip hinge</button>
+              <button id="btn-door-side" title="Open to the other side of the wall">Flip swing</button>
+              <button id="btn-door-move" title="Click a wall to move it there">Move</button>
+              <button id="btn-delete-door" class="danger">Delete door</button>
+            </div>
+            <div class="note-small">Doors are for the floor plan; they don't change this area.</div>
           </div>
         </section>
 

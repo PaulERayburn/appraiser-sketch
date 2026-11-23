@@ -27,6 +27,7 @@ import {
   type Point,
 } from "./path.js";
 import { stairDrawing, type Stair } from "./stairs.js";
+import type { Door } from "./doors.js";
 import { formatLength } from "./units.js";
 import { slopeBands, type Slope, type SlopeBand, type ZoneKind } from "./zones.js";
 import { parseVectors, type VectorError } from "./vectors.js";
@@ -72,6 +73,8 @@ export interface Area {
   stairs?: Stair[];
   /** Interior walls (floor plan only; never change the area). */
   walls?: InteriorWall[];
+  /** Doors set in the outline or the interior walls (floor plan only; never change the area). */
+  doors?: Door[];
   override?: Override;
   /** Area label offset from the outline's centre, feet. */
   label?: Point;

@@ -12,7 +12,10 @@ import {
   STAIR_TYPES,
   STRUCTURE_KINDS,
   ZONE_BANDS,
+  DOOR_STYLES,
+  defaultDoor,
   defaultStair,
+  type Door,
   type Area,
   type AreaKind,
   type CeilingBand,
@@ -157,6 +160,22 @@ function readStair(st: Raw, where: string): Stair {
   );
 }
 
+function readDoor(d: Raw, where: string): Door {
+  const width = num(d, "width", where);
+  const side = num(d, "side", where);
+  return defaultDoor(
+    defined({
+      id: str(d, "id", where) ?? newId("d"),
+      at: point(d, "at", where),
+      angle: num(d, "angle", where),
+      width: width === undefined || width > 0 ? width : damaged(`${where}: width`),
+      style: oneOf(d, "style", DOOR_STYLES.map((t) => t.value), where),
+      hinge: oneOf(d, "hinge", ["a", "b"] as const, where),
+      side: side === undefined ? undefined : side < 0 ? (-1 as const) : (1 as const),
+    }),
+  );
+}
+
 function readArea(a: Raw, where: string): Area {
   let override: Override | undefined;
   if (a.override !== undefined) {
@@ -165,6 +184,7 @@ function readArea(a: Raw, where: string): Area {
     override = { bucket: oneOf(o, "bucket", BUCKETS, where) ?? damaged(`${where}: override`), note: str(o, "note", where) ?? "" };
   }
   const walls = list(a, "walls", where).map((w, i) => readWall(w, `${where}, interior wall ${i + 1}`));
+  const doors = list(a, "doors", where).map((d, i) => readDoor(d, `${where}, door ${i + 1}`));
   let hiddenDims: number[] | undefined;
   if (a.hiddenDims !== undefined) {
     const h = a.hiddenDims;
@@ -186,6 +206,7 @@ function readArea(a: Raw, where: string): Area {
       zones: list(a, "zones", where).map((z, i) => readZone(z, `${where}, zone ${i + 1}`)),
       stairs: list(a, "stairs", where).map((st, i) => readStair(st, `${where}, stair ${i + 1}`)),
       walls: walls.length ? walls : undefined,
+      doors: doors.length ? doors : undefined,
       override,
       label: point(a, "label", where),
       hideLabel: bool(a, "hideLabel", where) || undefined,

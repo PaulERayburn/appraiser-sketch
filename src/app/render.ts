@@ -10,7 +10,10 @@ import { cornerAngles, formatAngle,
   formatSqFt,
   orientation,
   signedPolygonArea,
+  doorSymbol,
+  seatDoor,
   stairDrawing,
+  wallSegments,
   stairHandles,
   zoneShort,
   type AreaResult,
@@ -215,12 +218,14 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
   const parts: string[] = opts.grid === false ? [] : [gridMarkup(v, width, height)];
   const labels: string[] = [];
   const handles: string[] = [];
+  /** Doors are clicked through the wall handles, so their hit lines go on top. */
+  const doorHits: string[] = [];
 
   for (const s of result.structures) {
     for (const r of s.areas) {
       const pts = flatten(r.shape.path, Math.PI / 48);
       const selected = selection?.structure === s.structure.id && selection.area === r.area.id;
-      const areaSelected = selected && !selection?.stair && !selection?.zone && !selection?.iwall;
+      const areaSelected = selected && !selection?.stair && !selection?.zone && !selection?.iwall && !selection?.door;
       const cls = ["area", `kind-${r.area.kind}`, `bucket-${r.ansi.bucket}`, areaSelected ? "selected" : "", r.problems.length ? "has-problems" : ""]
         .filter(Boolean)
         .join(" ");
@@ -276,6 +281,26 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       }
 
       // Stairs (symbols only; they never change the area).
+      if (r.area.doors?.length) {
+        // Doors sit in the walls as they are now, so one stays put when its wall is nudged.
+        const walls = wallSegments([r.shape.path, ...r.walls.map((w) => w.path)]);
+        for (const door of r.area.doors) {
+          const sym = doorSymbol(seatDoor(door, walls));
+          const a = toScreen(v, sym.a);
+          const b = toScreen(v, sym.b);
+          const on = selected && selection?.door === door.id;
+          parts.push(`<line class="door-gap" x1="${n(a.x)}" y1="${n(a.y)}" x2="${n(b.x)}" y2="${n(b.y)}"/>`);
+          for (const line of sym.lines) {
+            const pts = line.map((p) => toScreen(v, p)).map((p) => `${n(p.x)},${n(p.y)}`).join(" ");
+            parts.push(`<polyline class="door-leaf${sym.dashed ? " dashed" : ""}${on ? " selected" : ""}" points="${pts}"/>`);
+          }
+          if (interactive) {
+            doorHits.push(
+              `<line class="door-hit${on ? " selected" : ""}" ${data} data-door="${esc(door.id)}" x1="${n(a.x)}" y1="${n(a.y)}" x2="${n(b.x)}" y2="${n(b.y)}"><title>Door: click to edit, right-click for more</title></line>`,
+            );
+          }
+        }
+      }
       for (const st of r.area.stairs ?? []) {
         const stairSelected = selected && selection?.stair === st.id;
         parts.push(stairMarkup(st, v, data, stairSelected));
@@ -385,5 +410,5 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
     );
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}<g class="labels">${labels.join("")}</g>${handles.join("")}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">${parts.join("")}<g class="labels">${labels.join("")}</g>${handles.join("")}${doorHits.join("")}</svg>`;
 }

@@ -35,6 +35,7 @@ export function copyArea(src: Area, origin: Point, newId: (prefix: string) => st
   copy.zones = copy.zones.map((z) => ({ ...z, id: newId("z"), origin: shift(z.origin) }));
   copy.stairs = (copy.stairs ?? []).map((s) => ({ ...s, id: newId("st"), origin: shift(s.origin) }));
   if (copy.walls) copy.walls = copy.walls.map((w) => ({ ...w, id: newId("w"), origin: shift(w.origin) }));
+  if (copy.doors) copy.doors = copy.doors.map((d) => ({ ...d, id: newId("d"), at: shift(d.at) }));
   return { ...copy, ...over, id: copy.id };
 }
 

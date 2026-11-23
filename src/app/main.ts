@@ -37,7 +37,12 @@ import {
   type ZoneKind,
   zoneLabel,
   zoneShort,
+  DOOR_STYLES,
   applyArrow,
+  defaultDoor,
+  snapToWall,
+  wallSegments,
+  type Door,
   corners,
   skipToCorner,
   closeOutline,
@@ -464,6 +469,17 @@ canvas.addEventListener("pointerdown", (e) => {
   } catch {
     /* synthetic or already-released pointer */
   }
+  if (placing && e.button === 0) {
+    placeDoorAt(toWorld(view, p));
+    return;
+  }
+  const doorEl = drawing ? null : el.closest("[data-door]");
+  if (doorEl && e.button === 0) {
+    // A door is picked, not dragged: Move in its panel or menu puts it somewhere else.
+    store.select({ structure: doorEl.getAttribute("data-structure")!, area: doorEl.getAttribute("data-area")!, door: doorEl.getAttribute("data-door")! });
+    setCollapsed(doorsUi.panel, false);
+    return;
+  }
   if (drawing && e.button === 0) {
     // A click places a point; a drag still pans.
     drag = { kind: "pan", startX: e.clientX, startY: e.clientY, ox: view.ox, oy: view.oy, at: toWorld(view, p), moved: false, place: { px: p, free: e.altKey } };
@@ -791,6 +807,7 @@ canvas.addEventListener("pointermove", (e) => {
           for (const st of f.area.stairs ?? []) st.origin = shift(st.origin);
           for (const z of f.area.zones) z.origin = shift(z.origin);
           for (const wl of f.area.walls ?? []) wl.origin = shift(wl.origin);
+          for (const dr of f.area.doors ?? []) dr.at = shift(dr.at);
           const carry = new Set(d.carry ?? []);
           for (const t of draft.texts ?? []) if (carry.has(t.id)) t.at = shift(t.at);
         }
@@ -1214,6 +1231,167 @@ $("btn-delete-stair").addEventListener("click", () => {
   say("Stair deleted (Ctrl+Z to undo)");
 });
 
+// ---------- doors ----------
+
+const doorsUi = {
+  panel: $<HTMLElement>("doors-panel"),
+  list: $<HTMLDivElement>("door-list"),
+  form: $<HTMLDivElement>("door-form"),
+  style: $<HTMLSelectElement>("dr-style"),
+  width: $<HTMLInputElement>("dr-width"),
+};
+doorsUi.style.innerHTML = DOOR_STYLES.map((t) => `<option value="${t.value}">${esc(t.label)}</option>`).join("");
+const DOOR_SHORT: Record<string, string> = { swing: "Swing", double: "Double", sliding: "Sliding", pocket: "Pocket", bifold: "Bifold", overhead: "Overhead", opening: "Opening" };
+
+/** Waiting for a click on a wall: to put a new door there, or to move one. */
+let placing: { sel: Selection; move?: string } | null = null;
+
+function selectedDoor(): Door | null {
+  const sel = store.state.selection;
+  const f = findArea(store.state.sketch, sel);
+  return f && sel?.door ? ((f.area.doors ?? []).find((d) => d.id === sel.door) ?? null) : null;
+}
+
+function drawDoors() {
+  const sel = store.state.selection;
+  const f = findArea(store.state.sketch, sel);
+  const list = f?.area.doors ?? [];
+  // Only shown when the selected area has doors; "+ Door" in the Area panel adds one.
+  doorsUi.panel.classList.toggle("hidden", !f || list.length === 0);
+  doorsUi.list.innerHTML = list
+    .map((d, i) => `<button data-door="${esc(d.id)}" class="${sel?.door === d.id ? "selected" : ""}">${i + 1}. ${DOOR_SHORT[d.style] ?? "Door"} ${esc(formatLength(d.width))}</button>`)
+    .join("");
+  const d = selectedDoor();
+  doorsUi.form.classList.toggle("hidden", !d);
+  if (!d) return;
+  sync(doorsUi.style, d.style);
+  sync(doorsUi.width, formatLength(d.width));
+  const hung = d.style === "swing" || d.style === "pocket";
+  $<HTMLButtonElement>("btn-door-hinge").disabled = !hung;
+  $<HTMLButtonElement>("btn-door-side").disabled = d.style === "opening";
+}
+
+function editDoor(fn: (d: Door) => void, coalesce?: string) {
+  const sel = store.state.selection;
+  if (!sel?.door) return;
+  store.update(
+    (draft) => {
+      const d = (findArea(draft, sel)?.area.doors ?? []).find((x) => x.id === sel.door);
+      if (d) fn(d);
+    },
+    coalesce ? { coalesce: `${coalesce}:${sel.door}` } : {},
+  );
+}
+
+function startPlacing(move?: string) {
+  const sel = store.state.selection;
+  if (!sel || !findArea(store.state.sketch, sel)) return;
+  if (drawing) finishDrawingWalls();
+  placing = move ? { sel: { structure: sel.structure, area: sel.area }, move } : { sel: { structure: sel.structure, area: sel.area } };
+  canvas.classList.add("placing-door");
+  say(move ? "Click the wall to move the door to (Esc to leave it)" : "Click a wall where the door goes (Esc to stop)");
+}
+
+function stopPlacing() {
+  placing = null;
+  canvas.classList.remove("placing-door");
+}
+
+/** The click that places or moves a door: onto the nearest wall of its area, outline or interior. */
+function placeDoorAt(p: Point) {
+  const pl = placing;
+  if (!pl) return;
+  const ar = result.structures.flatMap((s) => s.areas).find((a) => a.area.id === pl.sel.area);
+  if (!ar) return stopPlacing();
+  const walls = wallSegments([ar.shape.path, ...ar.walls.map((w) => w.path)]);
+  const moving = pl.move ? (ar.area.doors ?? []).find((d) => d.id === pl.move) : undefined;
+  let width = moving?.width ?? DOOR_STYLES[0]!.width;
+  // Within about a thumb's width of the wall on screen, and never more than 3'.
+  const reach = Math.min(3, 24 / view.scale);
+  let hit = snapToWall(p, width, walls, reach);
+  if (!hit && !moving) {
+    // A short wall: a narrower door rather than none.
+    for (const w of [2.5, 2, 1.5]) {
+      hit = snapToWall(p, w, walls, reach);
+      if (hit) {
+        width = w;
+        break;
+      }
+    }
+  }
+  if (!hit) {
+    say(walls.length ? "Click on a wall of this area (one long enough for the door)" : "Draw the walls first, then add doors to them");
+    return;
+  }
+  const at = hit;
+  const id = moving?.id ?? newId("d");
+  // It opens into the area: toward the middle of the outline.
+  const c = centroid(flatten(ar.shape.path, Math.PI / 48));
+  const rad = (at.angle * Math.PI) / 180;
+  const inward = -Math.sin(rad) * (c.x - at.at.x) + Math.cos(rad) * (c.y - at.at.y) >= 0 ? 1 : -1;
+  store.update((draft) => {
+    const f = findArea(draft, pl.sel);
+    if (!f) return;
+    const old = (f.area.doors ?? []).find((d) => d.id === id);
+    if (old) {
+      old.at = at.at;
+      old.angle = at.angle;
+    } else {
+      (f.area.doors ??= []).push(defaultDoor({ id, at: at.at, angle: at.angle, width, side: inward }));
+    }
+    return { structure: pl.sel.structure, area: pl.sel.area, door: id };
+  });
+  setCollapsed(doorsUi.panel, false);
+  stopPlacing();
+}
+
+function deleteDoor() {
+  const sel = store.state.selection;
+  if (!sel?.door) return;
+  store.update((draft) => {
+    const f = findArea(draft, sel);
+    if (f) {
+      f.area.doors = (f.area.doors ?? []).filter((x) => x.id !== sel.door);
+      if (f.area.doors.length === 0) delete f.area.doors;
+    }
+    return { structure: sel.structure, area: sel.area };
+  });
+  say("Door deleted (Ctrl+Z to undo)");
+}
+
+$("btn-add-door").addEventListener("click", () => (placing && !placing.move ? stopPlacing() : startPlacing()));
+$("btn-add-door-2").addEventListener("click", () => startPlacing());
+$("btn-door-move").addEventListener("click", () => {
+  const d = selectedDoor();
+  if (d) startPlacing(d.id);
+});
+$("btn-delete-door").addEventListener("click", deleteDoor);
+$("btn-door-hinge").addEventListener("click", () => editDoor((d) => (d.hinge = d.hinge === "a" ? "b" : "a")));
+$("btn-door-side").addEventListener("click", () => editDoor((d) => (d.side = d.side === 1 ? -1 : 1)));
+doorsUi.style.addEventListener("change", () =>
+  editDoor((d) => {
+    const was = DOOR_STYLES.find((t) => t.value === d.style);
+    d.style = doorsUi.style.value as Door["style"];
+    // A door still at its kind's usual width takes the new kind's usual width.
+    const now = DOOR_STYLES.find((t) => t.value === d.style);
+    if (was && now && Math.abs(d.width - was.width) < 1e-6) d.width = now.width;
+  }),
+);
+doorsUi.width.addEventListener("input", () => {
+  const v = parseLength(doorsUi.width.value.trim());
+  if (v !== null && v > 0) editDoor((d) => (d.width = v), "door-width");
+});
+doorsUi.width.addEventListener("blur", () => {
+  external = true;
+  drawDoors();
+  external = false;
+});
+doorsUi.list.addEventListener("click", (e) => {
+  const b = (e.target as Element).closest("[data-door]");
+  const sel = store.state.selection;
+  if (b && sel) store.select({ structure: sel.structure, area: sel.area, door: b.getAttribute("data-door")! });
+});
+
 function rotateStair() {
   editStair((st) => (st.rotation = (st.rotation + 270) % 360)); // clockwise on screen
 }
@@ -1263,6 +1441,7 @@ function lengthField(el: HTMLInputElement, apply: (st: Stair, v: number) => void
     el.classList.remove("invalid");
     external = true;
     drawStairs();
+    drawDoors();
     external = false;
   });
 }
@@ -2829,10 +3008,16 @@ function redo() {
 document.addEventListener("keydown", (e) => {
   const mod = e.ctrlKey || e.metaKey;
   const k = e.key.toLowerCase();
-  if (e.key === "Escape" && drawing) {
+  if (e.key === "Escape" && placing) {
+    e.preventDefault();
+    stopPlacing();
+  } else if (e.key === "Escape" && drawing) {
     e.preventDefault();
     finishDrawingWalls();
     canvas.focus();
+  } else if (!mod && document.activeElement === canvas && (e.key === "Delete" || e.key === "Backspace") && store.state.selection?.door) {
+    e.preventDefault();
+    deleteDoor();
   } else if (mod && k === "z" && !e.shiftKey) {
     e.preventDefault();
     undo();
@@ -3153,6 +3338,7 @@ function areaMenu(): MenuItem[] {
     })),
     { label: "Add ceiling zone or opening", run: () => $("btn-show-zones").click() },
     { label: "Draw interior walls", run: () => iwallButton.click() },
+    { label: "Add door", hint: "then click a wall", run: () => startPlacing() },
     "sep",
     { label: "Fit to window", run: () => { setAutoFit(true); fit(); } },
     "sep",
@@ -3173,6 +3359,21 @@ function stairMenu(): MenuItem[] {
     { label: "Copy to…", hint: "this or another floor", run: () => { setCollapsed(stairs.panel, false); const d = $<HTMLDetailsElement>("copy-stair"); d.open = true; d.querySelector("summary")?.focus(); } },
     "sep",
     { label: "Delete stair", danger: true, run: () => $("btn-delete-stair").click() },
+  ];
+}
+
+function doorMenu(): MenuItem[] {
+  const d = selectedDoor();
+  if (!d) return areaMenu();
+  const hung = d.style === "swing" || d.style === "pocket";
+  return [
+    ...choiceItem("Kind of door", doorsUi.style),
+    { label: "Width", hint: formatLength(d.width), run: () => renameIn(doorsUi.panel, doorsUi.width) },
+    ...(hung ? [{ label: "Flip hinge", hint: "hang it on the other jamb", run: () => $("btn-door-hinge").click() }] : []),
+    ...(d.style === "opening" ? [] : [{ label: "Flip swing", hint: "open to the other side", run: () => $("btn-door-side").click() }]),
+    { label: "Move", hint: "then click a wall", run: () => startPlacing(d.id) },
+    "sep",
+    { label: "Delete door", danger: true, run: () => deleteDoor() },
   ];
 }
 
@@ -3213,6 +3414,16 @@ tree.addEventListener("contextmenu", (e) => {
   openMenu(e.clientX, e.clientY, store.state.selection?.structure === structure ? structureMenu() : sketchMenu());
 });
 
+// A door in the Doors panel's list.
+doorsUi.list.addEventListener("contextmenu", (e) => {
+  const b = (e.target as Element).closest("[data-door]");
+  const sel = store.state.selection;
+  if (!b || !sel) return;
+  e.preventDefault();
+  store.select({ structure: sel.structure, area: sel.area, door: b.getAttribute("data-door")! });
+  openMenu(e.clientX, e.clientY, doorMenu());
+});
+
 // A stair in the Stairs panel's list.
 stairs.list.addEventListener("contextmenu", (e) => {
   const b = (e.target as Element).closest("[data-stair]");
@@ -3232,7 +3443,11 @@ canvas.addEventListener("contextmenu", (e) => {
   const structure = el?.getAttribute("data-structure");
   const area = el?.getAttribute("data-area");
   const stair = el?.getAttribute("data-stair");
-  if (structure && area && stair) {
+  const door = el?.getAttribute("data-door");
+  if (structure && area && door) {
+    store.select({ structure, area, door });
+    openMenu(e.clientX, e.clientY, doorMenu());
+  } else if (structure && area && stair) {
     store.select({ structure, area, stair });
     openMenu(e.clientX, e.clientY, stairMenu());
   } else if (structure && area) {
@@ -3260,6 +3475,7 @@ function redraw() {
   drawMeta();
   drawLabels();
   drawStairs();
+  drawDoors();
   drawZones();
   drawVectorBar();
   drawTable();

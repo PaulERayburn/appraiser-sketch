@@ -16,6 +16,8 @@ export interface Selection {
   zone?: string;
   /** An interior wall on that area, when one is selected. */
   iwall?: string;
+  /** A door on that area, when one is selected. */
+  door?: string;
 }
 
 export interface State {
@@ -180,6 +182,7 @@ export class Store {
     if (sel.stair && !(a.stairs ?? []).some((st) => st.id === sel.stair)) return { structure: s.id, area: a.id };
     if (sel.zone && !a.zones.some((z) => z.id === sel.zone)) return { structure: s.id, area: a.id };
     if (sel.iwall && !(a.walls ?? []).some((w) => w.id === sel.iwall)) return { structure: s.id, area: a.id };
+    if (sel.door && !(a.doors ?? []).some((d) => d.id === sel.door)) return { structure: s.id, area: a.id };
     return sel;
   }
 }

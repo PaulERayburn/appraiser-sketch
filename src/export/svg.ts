@@ -24,6 +24,9 @@ text { font-family: Arial, Helvetica, sans-serif; }
 .zone-part.zone-full { fill: none; }
 .zone-sloped { fill: none; }
 .iwall { fill: none; stroke: #111; stroke-width: 1; stroke-linecap: square; }
+.door-gap { stroke: #fff; stroke-width: 3; }
+.door-leaf { fill: none; stroke: #111; stroke-width: 0.8; }
+.door-leaf.dashed { stroke-dasharray: 4 3; }
 .stair { fill: #fff; stroke: #111; stroke-width: 1; }
 .tread { stroke: #666; stroke-width: 0.7; }
 .stair-arrow { fill: none; stroke: #111; stroke-width: 1; }

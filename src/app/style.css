@@ -223,6 +223,14 @@ details[open] { display: flex; flex-direction: column; gap: 6px; }
 .snap-mark.snap-corner { fill: var(--accent); }
 .snap-mark.snap-wall { stroke-width: 2.4; }
 .canvas.drawing-walls, .canvas.drawing-walls * { cursor: crosshair !important; }
+.door-gap { stroke: var(--canvas); stroke-width: 4.5; pointer-events: none; }
+.door-leaf { fill: none; stroke: var(--ink); stroke-width: 1.2; pointer-events: none; }
+.door-leaf.dashed { stroke-dasharray: 5 4; }
+.door-leaf.selected { stroke: var(--accent); stroke-width: 2; }
+.door-hit { stroke: transparent; stroke-width: 14; cursor: pointer; }
+.door-hit.selected { stroke: var(--accent); stroke-opacity: 0.35; }
+.canvas.placing-door, .canvas.placing-door * { cursor: crosshair !important; }
+#door-form.hidden { display: none; }
 .stair { fill: var(--canvas); stroke: var(--ink); stroke-width: 1.2; cursor: move; }
 .stair.selected { stroke: var(--accent); stroke-width: 2.2; }
 .tread { stroke: var(--muted); stroke-width: 0.8; pointer-events: none; }
