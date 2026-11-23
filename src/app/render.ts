@@ -242,7 +242,14 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       const wallT = detail && meta.wallThickness && hasWalls(r.area.kind) && r.shape.closure.closed ? meta.wallThickness : undefined;
       if (pts.length >= 3) {
         const d = `M${scr.map((p) => `${n(p.x)},${n(p.y)}`).join("L")}Z`;
-        parts.push(`<path class="${cls}" ${data} d="${d}"/>`);
+        if (r.shape.closure.closed) {
+          parts.push(`<path class="${cls}" ${data} d="${d}"/>`);
+        } else {
+          // Not closed yet: fill the shape, but line only the walls that were entered, so the
+          // missing one reads as missing (it is drawn dashed below) rather than as a wall.
+          parts.push(`<path class="${cls} unclosed" ${data} d="${d}"/>`);
+          parts.push(`<polyline class="${cls.replace(/^area\b/, "area-walls")}" points="${scr.map((p) => `${n(p.x)},${n(p.y)}`).join(" ")}"/>`);
+        }
         const inner = wallT ? insetPolygon(pts, wallT) : null;
         if (inner) {
           const di = `M${inner.map((p) => toScreen(v, p)).map((p) => `${n(p.x)},${n(p.y)}`).join("L")}Z`;

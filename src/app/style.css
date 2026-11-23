@@ -202,6 +202,12 @@ details[open] { display: flex; flex-direction: column; gap: 6px; }
 .area.kind-deck { fill: var(--nonliving); stroke-dasharray: 6 4; }
 .area.bucket-unfinishedBelow, .area.bucket-finishedBelow, .area.bucket-nonStandardBelow { fill: var(--below); }
 .area.selected { stroke: var(--accent); stroke-width: 2.6; }
+/* An outline not yet closed: only the walls entered are lined; the gap back to the start is the dashed line. */
+.area.unclosed, .area.unclosed.selected, .area.unclosed.has-problems { stroke: none; }
+.area-walls { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linejoin: round; pointer-events: none; }
+.area-walls.kind-deck { stroke-dasharray: 6 4; }
+.area-walls.selected { stroke: var(--accent); stroke-width: 2.6; }
+.area-walls.has-problems { stroke: var(--warn); }
 .area.has-problems { stroke: var(--warn); }
 
 .zone { fill: rgba(128, 128, 128, 0.001); stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; cursor: move; }
@@ -249,7 +255,7 @@ body.no-detail .detail-only { display: none !important; }
 .stair-head { fill: var(--ink); pointer-events: none; }
 .stair-label { font-size: 9px; font-weight: 650; fill: var(--ink); text-anchor: middle; dominant-baseline: middle; pointer-events: none; }
 
-.misclosure { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 4 3; pointer-events: none; }
+.misclosure { stroke: var(--warn); stroke-width: 1.5; stroke-dasharray: 7 6; pointer-events: none; }
 .start-mark { fill: var(--canvas); stroke: var(--accent); stroke-width: 2; pointer-events: none; }
 .pen-mark { fill: var(--accent); pointer-events: none; }
 

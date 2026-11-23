@@ -15,6 +15,10 @@ text { font-family: Arial, Helvetica, sans-serif; }
 .area { stroke: #111; stroke-width: 1.5; fill: #fff; stroke-linejoin: round; }
 .area.kind-deck { stroke-dasharray: 6 4; }
 .area.has-problems { stroke: #b3261e; }
+.area.unclosed, .area.unclosed.has-problems { stroke: none; }
+.area-walls { fill: none; stroke: #111; stroke-width: 1.5; stroke-linejoin: round; }
+.area-walls.kind-deck { stroke-dasharray: 6 4; }
+.area-walls.has-problems { stroke: #b3261e; }
 .zone { fill: none; stroke: #777; stroke-width: 0.8; stroke-dasharray: 3 3; }
 .zone-low { fill: #ececec; }
 .zone-reduced { fill: #f6f6f6; }
