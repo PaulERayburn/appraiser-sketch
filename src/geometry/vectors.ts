@@ -51,6 +51,9 @@ const RE_DIAG = new RegExp(`^(${DIAGS})(${LEN})${ARC}$`);
 const RE_CARD = new RegExp(`^(${CARD})(${LEN})(?:(${CARD})(${LEN}))?${ARC}$`);
 const RE_POLAR = new RegExp(String.raw`^A(-?[0-9]+(?:\.[0-9]+)?):(${LEN})${ARC}$`);
 
+// Length first, as many appraisers write it in the field: 24R, 24'6"U, 10R5U, 10UR, 20R^3.
+const RE_LENGTH_FIRST = new RegExp(`^(${LEN}?)(${DIAGS}|${CARD})(?:(${LEN}?)(${CARD}))?(\\^-?${LEN})?$`);
+
 interface Move {
   dx: number;
   dy: number;
@@ -71,6 +74,14 @@ function parseSagitta(raw: string | undefined): number | string {
 function parseToken(tok: string): TokenResult {
   const t = tok.toUpperCase();
   if (t === "CL" || t === "CLOSE" || t === "A") return { close: true };
+
+  if (/^[0-9]/.test(t)) {
+    // Turn "24R" into "R24" and read it as usual. The length stops at the direction letter.
+    const lf = RE_LENGTH_FIRST.exec(t);
+    if (!lf) return { error: `unknown move "${tok}"` };
+    const r = parseToken(`${lf[2]}${lf[1]}${lf[4] ? `${lf[4]}${lf[3]}` : ""}${lf[5] ?? ""}`);
+    return "error" in r && r.error.startsWith("unknown move") ? { error: `unknown move "${tok}"` } : r;
+  }
 
   let m = RE_DIAG.exec(t);
   if (m) {

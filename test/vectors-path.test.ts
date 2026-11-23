@@ -151,6 +151,24 @@ describe("closing and errors", () => {
     expect(c.distance).toBeCloseTo(1, 9);
   });
 
+  it("length first reads the same as direction first", () => {
+    const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
+    same("24R 30U 24L 30D", "R24 U30 L24 D30");
+    same("24'6\"r 30u 24'6\"l cl", "R24'6\" U30 L24'6\" CL");
+    same("10R5U", "R10U5"); // run and rise
+    same("10UR 10ne", "UR10 NE10"); // 45° walls
+    same("20R^3 20r^-3", "R20^3 R20^-3"); // arcs
+    same("10-1/2\"R 24.5U", "R10-1/2\" U24.5");
+    same("r10 5u 30R u20'6", "R10 U5 R30 U20'6"); // mixed in one outline
+    expect(area(parseVectors("24R 30U 24L 30D").path)).toBeCloseTo(720, 9);
+  });
+
+  it("length first: bad tokens are still reported as typed", () => {
+    const r = parseVectors("24R 5X 30U 10R5L 24 0R");
+    expect(r.errors.map((e) => e.text)).toEqual(["5X", "10R5L", "24", "0R"]);
+    expect(r.errors[0]!.message).toBe('unknown move "5X"');
+  });
+
   it("bad tokens are reported and skipped", () => {
     const r = parseVectors("R24 X5 U30 R10L5 L24 D30 R0");
     expect(r.errors.map((e) => [e.token, e.text])).toEqual([
