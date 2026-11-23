@@ -1572,6 +1572,8 @@ const ARROWS: Record<string, "up" | "down" | "left" | "right"> = {
  * area it applies to.
  */
 let adjusting: string | null = null;
+/** Walls are being entered with the arrow keys, so an arrow at the end of the box makes a wall rather than moving the caret. */
+let arrowsArmed = false;
 /** Which area or zone the walls box is showing. */
 let vectorsFor = "";
 
@@ -1588,7 +1590,8 @@ function arrowIntoWalls(key: string, atEnd: boolean, shift = false): boolean {
     r = adjustLastWall(vectors.value, caret, dir, shift ? 1 : smallStep());
     if (!r) return true; // crosswise arrow while adjusting: ignore rather than move the caret
   }
-  if (!r) return false;
+  // No length waiting and no wall being adjusted: the arrow runs a wall to the next corner that way.
+  if (!r) return shift ? false : arrowSkip(dir, atEnd);
   vectors.value = r.text;
   vectors.setSelectionRange(r.caret, r.caret);
   vectors.dispatchEvent(new Event("input", { bubbles: false }));
@@ -1602,6 +1605,7 @@ function arrowIntoWalls(key: string, atEnd: boolean, shift = false): boolean {
 function endAdjust(): boolean {
   if (!adjusting) return false;
   adjusting = null;
+  arrowsArmed = true; // still entering by arrow keys: the next arrow may run to a corner
   if (!/\s$/.test(vectors.value) && vectors.value !== "") {
     vectors.value += " ";
     vectors.dispatchEvent(new Event("input"));
@@ -1613,40 +1617,77 @@ function endAdjust(): boolean {
 /** The walls text a skip left behind and its direction: Enter again straight after carries on the same way. */
 let lastSkip: { text: string; dir: string } | null = null;
 
-/**
- * "L" then Enter → a wall left as far as the next corner already drawn
- * (outlines and zones, not interior walls). Enter again, with nothing typed
- * since, carries the same wall on to the corner after that.
- */
-function skipIntoWalls(): boolean {
+/** Where a skip measures from, and the corners it may line up with (outlines and zones, not interior walls). */
+function skipContext(): { origin: { x: number; y: number }; others: { x: number; y: number }[] } | null {
   const sel = store.state.selection;
   const found = findArea(store.state.sketch, sel);
-  if (!found || vectors.disabled || sel?.iwall) return false;
-  if (vectors.selectionStart !== vectors.selectionEnd) return false;
+  if (!found || vectors.disabled || sel?.iwall) return null;
   const zone = sel?.zone ? found.area.zones.find((z) => z.id === sel.zone) : undefined;
-  if (sel?.zone && !zone) return false;
-  const origin = (zone ?? found.area).origin;
+  if (sel?.zone && !zone) return null;
   // Corners of the other areas count too: line a wall up with the floor below or the garage.
   const others = zone
     ? corners(found.area.vectors, found.area.origin)
     : store.state.sketch.structures.flatMap((s) => s.areas).filter((a) => a.id !== found.area.id).flatMap((a) => corners(a.vectors, a.origin));
+  return { origin: (zone ?? found.area).origin, others };
+}
+
+function applySkip(r: { text: string; caret: number }, dir: string) {
+  vectors.value = r.text;
+  vectors.setSelectionRange(r.caret, r.caret);
+  vectors.dispatchEvent(new Event("input"));
+  lastSkip = { text: r.text, dir };
+}
+
+/**
+ * "L" then Enter → a wall left as far as the next corner already drawn.
+ * Enter again, with nothing typed since, carries the same wall on to the
+ * corner after that.
+ */
+function skipIntoWalls(): boolean {
+  const ctx = skipContext();
+  if (!ctx || vectors.selectionStart !== vectors.selectionEnd) return false;
   const caret = vectors.selectionStart ?? vectors.value.length;
   let again = false;
-  let r = skipToCorner(vectors.value, caret, origin, others);
+  let r = skipToCorner(vectors.value, caret, ctx.origin, ctx.others);
   let dir = /([lrud])$/i.exec(vectors.value.slice(0, caret))?.[1] ?? "";
   if (!r && lastSkip && vectors.value === lastSkip.text && caret === vectors.value.length) {
     again = true;
     dir = lastSkip.dir;
-    r = skipToCorner(vectors.value + dir, vectors.value.length + 1, origin, others);
+    r = skipToCorner(vectors.value + dir, vectors.value.length + 1, ctx.origin, ctx.others);
   }
   if (!r) {
     if (again) say("No corner further that way");
     return again; // a repeat with nowhere to go: stay put rather than add blank lines
   }
-  vectors.value = r.text;
-  vectors.setSelectionRange(r.caret, r.caret);
-  vectors.dispatchEvent(new Event("input"));
-  lastSkip = { text: r.text, dir };
+  applySkip(r, dir);
+  return true;
+}
+
+/**
+ * An arrow key with no length typed: a wall that way as far as the next
+ * corner already drawn; the same arrow again carries it on. On the drawing
+ * it always applies. In the walls box only at the end, on an empty line, so
+ * the arrows still move the caret everywhere else.
+ */
+function arrowSkip(dir: "up" | "down" | "left" | "right", onDrawing: boolean): boolean {
+  const ctx = skipContext();
+  if (!ctx) return false;
+  const text = vectors.value;
+  const blank = text === "" || /[\s,]$/.test(text);
+  if (!onDrawing) {
+    const caret = vectors.selectionStart ?? text.length;
+    if (caret !== text.length || vectors.selectionEnd !== caret) return false;
+    if (!(text === "" || text.endsWith("\n") || arrowsArmed)) return false;
+  }
+  const letter = { up: "U", down: "D", left: "L", right: "R" }[dir];
+  const base = blank ? text : `${text} `;
+  const r = skipToCorner(base + letter, base.length + 1, ctx.origin, ctx.others);
+  if (!r) {
+    if (onDrawing || text !== "") say("No corner further that way");
+    return onDrawing; // in the box, let the arrow move the caret
+  }
+  applySkip(r, letter);
+  arrowsArmed = true;
   return true;
 }
 
@@ -1677,7 +1718,10 @@ vectors.addEventListener("keydown", (e) => {
     e.preventDefault();
     return;
   }
-  if (e.key !== "Shift") adjusting = null; // typing moves on
+  if (e.key !== "Shift") {
+    adjusting = null; // typing moves on
+    arrowsArmed = false;
+  }
   if (e.key.toLowerCase() === "a" && closeKeyIntoWalls(false)) e.preventDefault();
 });
 
