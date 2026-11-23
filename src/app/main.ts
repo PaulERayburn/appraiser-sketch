@@ -2537,9 +2537,14 @@ dropMenu("copy-area", "copy-area-list", () => {
 
 $("copy-area-list").addEventListener("click", (e) => {
   const id = (e.target as Element).closest("[data-copy]")?.getAttribute("data-copy");
+  if (id) copySelectedArea(id);
+});
+
+/** Copy the selected area: "exact", or as one of the presets (next floor, basement, garage…). */
+function copySelectedArea(id: string) {
   const sel = store.state.selection;
   const f = findArea(store.state.sketch, sel);
-  if (!id || !sel || !f) return;
+  if (!sel || !f) return;
   $<HTMLDetailsElement>("copy-area").open = false;
   const preset = AREA_PRESETS.find((p): p is AreaPreset => p !== "sep" && p.id === id);
   const origin = nextFreeOrigin();
@@ -2557,7 +2562,7 @@ $("copy-area-list").addEventListener("click", (e) => {
   props.name.focus();
   props.name.select();
   say("Copied: set its name, type and level, then edit the walls if they differ");
-});
+}
 
 // ---------- start an area from another's walls ----------
 
@@ -2976,6 +2981,137 @@ vectorLabel.addEventListener("pointerdown", (e) => {
   }
   setDock(DOCKS.find((d) => d === saved) ?? "bottom");
 }
+
+// ---------- right-click menus ----------
+
+type MenuItem = { label: string; hint?: string; danger?: boolean; run: () => void } | "sep";
+const ctxMenu = document.createElement("div");
+ctxMenu.className = "add-menu-body ctx-menu hidden";
+ctxMenu.setAttribute("role", "menu");
+document.body.append(ctxMenu);
+let ctxItems: MenuItem[] = [];
+
+function closeMenu() {
+  ctxMenu.classList.add("hidden");
+}
+
+function openMenu(x: number, y: number, items: MenuItem[]) {
+  ctxItems = items;
+  ctxMenu.innerHTML = items
+    .map((it, k) =>
+      it === "sep"
+        ? "<hr />"
+        : `<button role="menuitem" data-item="${k}"${it.danger ? ' class="danger"' : ""}>${esc(it.label)}${it.hint ? `<small>${esc(it.hint)}</small>` : ""}</button>`,
+    )
+    .join("");
+  ctxMenu.classList.remove("hidden");
+  // Keep the whole menu on screen.
+  const w = ctxMenu.offsetWidth;
+  const h = ctxMenu.offsetHeight;
+  ctxMenu.style.left = `${Math.max(4, Math.min(x, window.innerWidth - w - 4))}px`;
+  ctxMenu.style.top = `${Math.max(4, Math.min(y, window.innerHeight - h - 4))}px`;
+}
+
+ctxMenu.addEventListener("click", (e) => {
+  const k = (e.target as Element).closest("[data-item]")?.getAttribute("data-item");
+  const it = k === null || k === undefined ? undefined : ctxItems[Number(k)];
+  closeMenu();
+  if (it && it !== "sep") it.run();
+});
+ctxMenu.addEventListener("contextmenu", (e) => e.preventDefault());
+document.addEventListener("pointerdown", (e) => {
+  if (!ctxMenu.contains(e.target as Node)) closeMenu();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeMenu();
+});
+window.addEventListener("blur", closeMenu);
+window.addEventListener("resize", closeMenu);
+
+/** Put the caret in a name box with its text selected, ready to type over. */
+function renameIn(panel: Element, input: HTMLInputElement) {
+  setCollapsed(panel, false);
+  input.focus();
+  input.select();
+}
+
+function areaMenu(): MenuItem[] {
+  const f = findArea(store.state.sketch, store.state.selection);
+  if (!f) return [];
+  const r = result.structures.flatMap((s) => s.areas).find((a) => a.area.id === f.area.id);
+  const walls = r?.shape.path.segments.length ?? 0;
+  const open = walls > 0 && r !== undefined && !r.shape.closure.closed;
+  const items: MenuItem[] = [
+    { label: "Rename", run: () => renameIn(props.panel, props.name) },
+    { label: "Duplicate", hint: "an exact copy beside it", run: () => copySelectedArea("exact") },
+    "sep",
+  ];
+  if (open) items.push({ label: "Close outline", hint: "a straight wall back to the start", run: () => editArea((a) => (a.vectors = closeOutline(a.vectors))) });
+  if (open) items.push({ label: "Delete last wall", run: () => void deleteWallAction() });
+  else if (walls > 0) items.push({ label: "Open outline", hint: "removes the closing wall", run: () => void deleteWallAction() });
+  items.push(
+    { label: "Add stair", run: () => $("btn-add-stair").click() },
+    { label: "Add ceiling zone or opening", run: () => $("btn-show-zones").click() },
+    { label: "Draw interior walls", run: () => iwallButton.click() },
+    "sep",
+    { label: "Fit to window", run: () => { setAutoFit(true); fit(); } },
+    "sep",
+    { label: "Delete area", danger: true, run: () => $("btn-delete-area").click() },
+  );
+  return items;
+}
+
+function structureMenu(): MenuItem[] {
+  return [
+    { label: "Rename structure", run: () => renameIn(sprops.panel, sprops.name) },
+    { label: "Add area…", run: () => { const d = $<HTMLDetailsElement>("add-area"); d.open = true; d.querySelector("summary")?.focus(); } },
+    "sep",
+    { label: "Delete structure", danger: true, run: () => $("btn-delete-structure").click() },
+  ];
+}
+
+function sketchMenu(): MenuItem[] {
+  return [
+    { label: "Fit to window", run: () => { setAutoFit(true); fit(); } },
+    { label: "Undo", run: () => undo() },
+    { label: "Redo", run: () => redo() },
+    "sep",
+    { label: "Add area…", run: () => { const d = $<HTMLDetailsElement>("add-area"); d.open = true; d.querySelector("summary")?.focus(); } },
+  ];
+}
+
+// In the list of structures and areas: right-click selects, then offers what can be done with it.
+tree.addEventListener("contextmenu", (e) => {
+  const el = (e.target as Element).closest("[data-structure]");
+  if (!el) return;
+  e.preventDefault();
+  const structure = el.getAttribute("data-structure")!;
+  const area = el.getAttribute("data-area");
+  if (area) {
+    store.select({ structure, area });
+    openMenu(e.clientX, e.clientY, areaMenu());
+    return;
+  }
+  const first = store.state.sketch.structures.find((x) => x.id === structure)?.areas[0];
+  if (first && store.state.selection?.structure !== structure) store.select({ structure, area: first.id });
+  openMenu(e.clientX, e.clientY, store.state.selection?.structure === structure ? structureMenu() : sketchMenu());
+});
+
+// On the drawing: over an area it is that area's menu, elsewhere the sketch's.
+canvas.addEventListener("contextmenu", (e) => {
+  if (drawing) return; // drawing interior walls: leave the mouse alone
+  e.preventDefault();
+  // The press may have started a pan that captures the pointer, so look under the pointer, not at the event's target.
+  const el = document.elementFromPoint(e.clientX, e.clientY)?.closest("#canvas [data-area]");
+  const structure = el?.getAttribute("data-structure");
+  const area = el?.getAttribute("data-area");
+  if (structure && area) {
+    store.select({ structure, area });
+    openMenu(e.clientX, e.clientY, areaMenu());
+  } else {
+    openMenu(e.clientX, e.clientY, sketchMenu());
+  }
+});
 
 // ---------- wiring ----------
 

@@ -94,6 +94,8 @@ Click a stair to select it, then drag it or its round handles (flight lengths, w
 
 Each structure is named after its type (Dwelling, ADU, Detached garage, Barn, Shed, Outbuilding), numbered if repeated, until you type your own name.
 
+**Right-click** an area, in the list or on the drawing, for the things you do most: rename, duplicate, close or open the outline, add a stair, ceiling zone or interior walls, delete. Right-click a structure's name or the empty drawing for theirs.
+
 **Keyboard shortcuts:** Ctrl+Z undo · Ctrl+Y redo · Ctrl+S save · Ctrl+O open · Ctrl+P print · F fit · C auto fit · T rotate stair · Delete remove selected label, dimension or interior wall · Enter / Esc stop drawing interior walls.
 
 ## Settings
