@@ -202,6 +202,24 @@ describe("closing and errors", () => {
     expect(parseVectors("R10'645").errors.length + parseVectors("R10'645").path.segments.length).toBe(1);
   });
 
+  it("turns: degrees after a space turn the wall before them", () => {
+    const same = (a: string, b: string) => expect(parseVectors(a).path).toEqual(parseVectors(b).path);
+    same("R10 r10'6 45", "10R 10'6r45");
+    same("R10 10'6r 45 U5", "10R 10'6r45 U5");
+    same("R10\nL10'6 45\nU22.5", "10R 10'6l45 U22.5");
+    same("12r 2.83r 45 4l 45 2.83l 45 12r 45", "12r 2.83r45 4l45 2.83l45 12r45");
+    const r = parseVectors("R10 R10'6 45 U5");
+    expect(r.errors).toHaveLength(0);
+    expect(r.sources).toEqual(["R10", "A315:10'6", "U5"]);
+    // Only straight after a plain square wall: not after an angled one, a slope, or at the start.
+    expect(parseVectors("45 R10").errors.map((e) => e.text)).toEqual(["45"]);
+    expect(parseVectors("R10 UR5 45").errors.map((e) => e.text)).toEqual(["45"]);
+    expect(parseVectors("R10 R5U5 45").errors.map((e) => e.text)).toEqual(["45"]);
+    expect(parseVectors("R10 R5 45 45").errors.map((e) => e.text)).toEqual(["45"]);
+    // A length (with a foot or inch mark) is never degrees.
+    expect(parseVectors("R10 45'").errors.map((e) => e.text)).toEqual(["45'"]);
+  });
+
   it("turns: recorded as absolute walls for rewrites", () => {
     const r = parseVectors("10R 10'6r45 5U");
     expect(r.sources).toEqual(["10R", "A315:10'6", "5U"]);

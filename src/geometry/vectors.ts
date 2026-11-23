@@ -61,6 +61,10 @@ const RE_TURN = new RegExp(`^(${LEN}?)(${CARD})(-?[0-9]+(?:\\.[0-9]+)?)(\\^-?${L
 // the degrees and the length apart (R10'645 could not be told from 10'6" at 45°).
 const RE_TURN_DIR_FIRST = new RegExp(`^(${CARD})(-?[0-9]+(?:\\.[0-9]+)?):(${LEN})(\\^-?${LEN})?$`);
 
+const RE_DEGREES = /^-?[0-9]+(?:\.[0-9]+)?$/;
+const RE_SQUARE_DIR_FIRST = new RegExp(`^(${CARD})(${LEN})$`);
+const RE_SQUARE_LENGTH_FIRST = new RegExp(`^${LEN}?${CARD}$`);
+
 interface Move {
   dx: number;
   dy: number;
@@ -178,6 +182,8 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
   let at = { ...start };
   let index = 0;
   let closed = false;
+  /** The wall just made, when it is a plain R/L/U/D wall that degrees typed next may turn. */
+  let turnable: { wall: string; heading: number | null; index: number } | null = null;
 
   // Blank out "# comments" to end of line, keeping character offsets.
   const clean = straightQuotes(text).replace(/#[^\n]*/g, (c) => " ".repeat(c.length));
@@ -189,6 +195,19 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
     if (closed) {
       errors.push({ token: i, offset, text: tok, message: "move after CL" });
       continue;
+    }
+    // "R10'6 45": degrees on their own after a square wall turn that wall, as "10'6R45" does.
+    if (turnable && turnable.index === i - 1 && RE_DEGREES.test(tok)) {
+      const turned = parseToken(`${turnable.wall}${tok}`, turnable.heading);
+      const seg = segments[segments.length - 1];
+      turnable = null;
+      if (seg && "move" in turned) {
+        const to = { x: seg.from.x + turned.move.dx, y: seg.from.y + turned.move.dy };
+        segments[segments.length - 1] = { kind: "line", from: seg.from, to };
+        sources[sources.length - 1] = turned.as ?? null;
+        at = to;
+        continue;
+      }
     }
     const last = segments[segments.length - 1];
     const heading = last ? (Math.atan2(last.to.y - last.from.y, last.to.x - last.from.x) * 180) / Math.PI : null;
@@ -220,6 +239,9 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
     // mouse edit or a reorder do not swing round with the wall before them.
     sources.push(r.as ?? tok);
     at = to;
+    const square = RE_SQUARE_DIR_FIRST.exec(tok.toUpperCase()) ?? null;
+    const squareLf = square ? null : RE_SQUARE_LENGTH_FIRST.exec(tok.toUpperCase());
+    turnable = square ? { wall: `${square[2]}${square[1]}`, heading, index: i } : squareLf ? { wall: squareLf[0], heading, index: i } : null;
   }
 
   return { path: { start: { ...start }, segments }, errors, sources };
