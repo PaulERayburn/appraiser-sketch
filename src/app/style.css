@@ -103,7 +103,8 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 .brand { font-weight: 650; letter-spacing: 0.02em; }
 .group { display: flex; gap: 4px; }
 /* Basic or Detailed plan: a two-way switch, the one in use filled in. */
-.plan-mode { gap: 0; }
+/* A yellow frame so it is seen first: it decides which tools the rest of the screen offers. */
+.plan-mode { gap: 0; padding: 2px; border: 2px solid #f2c200; border-radius: 9px; box-shadow: 0 0 0 2px rgba(242, 194, 0, 0.22); }
 .plan-mode button { border-radius: 0; margin-left: -1px; }
 .plan-mode button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
 .plan-mode button:last-child { border-radius: 0 6px 6px 0; }
