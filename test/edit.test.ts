@@ -299,3 +299,21 @@ describe("bare direction then Enter", () => {
     expect(skipToCorner("R24 CL", 6, o)).toBeNull(); // CL is not a direction
   });
 });
+
+describe("turns and mouse edits", () => {
+  it("a turned wall keeps its direction when the wall before it is moved", () => {
+    const o = { x: 0, y: 0 };
+    const before = parseVectors("10R 10l45 10U", o).path.segments[1]!;
+    // Drag corner 1 (the end of the first wall) 2' up: the first wall now slopes.
+    const r = moveCorners("10R 10l45 10U", o, [2], { x: 0, y: 2 })!;
+    const walls = parseVectors(r.vectors, o).path.segments;
+    expect(walls[0]!.to).toEqual(before.from);
+    expect(walls[1]!.to.x).toBeCloseTo(before.to.x, 3);
+    expect(walls[1]!.to.y).toBeCloseTo(before.to.y + 2, 3);
+    const moved = moveCorners("10R 10l45 10U", o, [1], { x: 0, y: 2 })!;
+    const after = parseVectors(moved.vectors, o).path.segments;
+    // Corner 1 moved; the wall after the turned one is unchanged and still ends where it did.
+    expect(after[2]!.to.x).toBeCloseTo(parseVectors("10R 10l45 10U", o).path.segments[2]!.to.x, 3);
+    expect(after[2]!.to.y).toBeCloseTo(parseVectors("10R 10l45 10U", o).path.segments[2]!.to.y, 3);
+  });
+});

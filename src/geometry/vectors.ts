@@ -24,7 +24,7 @@ export interface VectorError {
 export interface ParseResult {
   path: Path;
   errors: VectorError[];
-  /** The token that made each segment (same order as path.segments); null for a wall added by CL. */
+  /** The token that made each segment (same order as path.segments); null for a wall added by CL. A turn (10R45) is given as the absolute wall it made (A315:10). */
   sources: (string | null)[];
 }
 
@@ -54,13 +54,17 @@ const RE_POLAR = new RegExp(String.raw`^A(-?[0-9]+(?:\.[0-9]+)?):(${LEN})${ARC}$
 // Length first, as many appraisers write it in the field: 24R, 24'6"U, 10R5U, 10UR, 20R^3.
 const RE_LENGTH_FIRST = new RegExp(`^(${LEN}?)(${DIAGS}|${CARD})(?:(${LEN}?)(${CARD}))?(\\^-?${LEN})?$`);
 
+// A length, a direction and a turn in degrees, as CValR Sketch writes an angled wall: 10'6R45.
+const RE_TURN = new RegExp(`^(${LEN}?)(${CARD})(-?[0-9]+(?:\\.[0-9]+)?)(\\^-?${LEN})?$`);
+
 interface Move {
   dx: number;
   dy: number;
   sagitta: number;
 }
 
-type TokenResult = { move: Move } | { close: true } | { error: string };
+/** `as` is the same wall written so it no longer depends on the wall before it. */
+type TokenResult = { move: Move; as?: string } | { close: true } | { error: string };
 
 function parseSagitta(raw: string | undefined): number | string {
   if (raw === undefined) return 0;
@@ -71,11 +75,30 @@ function parseSagitta(raw: string | undefined): number | string {
   return neg ? -v : v;
 }
 
-function parseToken(tok: string): TokenResult {
+/**
+ * `heading` is the direction of the wall before this one, in degrees
+ * counter-clockwise from "right" (null for the first wall).
+ */
+function parseToken(tok: string, heading: number | null = null): TokenResult {
   const t = tok.toUpperCase();
   if (t === "CL" || t === "CLOSE" || t === "A") return { close: true };
 
   if (/^[0-9]/.test(t)) {
+    // 10'6R45: turn right 45° from the wall just drawn and go 10'6" (L turns left).
+    // With no wall before it, or with U or D, the angle is measured clockwise from that direction.
+    const tn = RE_TURN.exec(t);
+    if (tn) {
+      const d = tn[2]!;
+      const u = UNIT[d]!;
+      const turn = Number(tn[3]);
+      const relative = heading !== null && (d === "R" || d === "L");
+      const from = relative ? heading : (Math.atan2(u.y, u.x) * 180) / Math.PI;
+      const deg = relative && d === "L" ? from + turn : from - turn;
+      const norm = Math.round((((deg % 360) + 360) % 360) * 1e6) / 1e6;
+      const as = `A${norm}:${tn[1]}${tn[4] ?? ""}`;
+      const r = parseToken(as);
+      return "move" in r ? { move: r.move, as } : r;
+    }
     // Turn "24R" into "R24" and read it as usual. The length stops at the direction letter.
     const lf = RE_LENGTH_FIRST.exec(t);
     if (!lf) return { error: `unknown move "${tok}"` };
@@ -160,7 +183,9 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
       errors.push({ token: i, offset, text: tok, message: "move after CL" });
       continue;
     }
-    const r = parseToken(tok);
+    const last = segments[segments.length - 1];
+    const heading = last ? (Math.atan2(last.to.y - last.from.y, last.to.x - last.from.x) * 180) / Math.PI : null;
+    const r = parseToken(tok, heading);
     if ("error" in r) {
       errors.push({ token: i, offset, text: tok, message: r.error });
       continue;
@@ -168,7 +193,6 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
     if ("close" in r) {
       closed = true;
       const gap = Math.hypot(start.x - at.x, start.y - at.y);
-      const last = segments[segments.length - 1];
       if (gap > CLOSE_TOLERANCE_FT) {
         segments.push({ kind: "line", from: at, to: { ...start } });
         sources.push(null);
@@ -185,7 +209,9 @@ export function parseVectors(text: string, start: Point = { x: 0, y: 0 }): Parse
     }
     const to = { x: at.x + dx, y: at.y + dy };
     segments.push(sagitta === 0 ? { kind: "line", from: at, to } : { kind: "arc", from: at, to, sagitta });
-    sources.push(tok);
+    // A turn is recorded as the absolute wall it made, so walls rewritten after a
+    // mouse edit or a reorder do not swing round with the wall before them.
+    sources.push(r.as ?? tok);
     at = to;
   }
 

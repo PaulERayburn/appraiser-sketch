@@ -163,6 +163,41 @@ describe("closing and errors", () => {
     expect(area(parseVectors("24R 30U 24L 30D").path)).toBeCloseTo(720, 9);
   });
 
+  it("turns: length, direction, degrees from the wall before", () => {
+    const end = (text: string) => {
+      const p = parseVectors(text).path;
+      return p.segments[p.segments.length - 1]!.to;
+    };
+    const h = 10.5 * Math.SQRT1_2;
+    // Going right, then 10'6" turned 45° to the right heads down and right.
+    expect(end("10R 10'6r45").x).toBeCloseTo(10 + h, 6);
+    expect(end("10R 10'6r45").y).toBeCloseTo(-h, 6);
+    // Turned left instead heads up and right.
+    expect(end("10R 10'6l45").y).toBeCloseTo(h, 6);
+    // Going up, a right turn of 90° is a wall to the right.
+    expect(end("U10 5r90").x).toBeCloseTo(5, 9);
+    expect(end("U10 5r90").y).toBeCloseTo(10, 9);
+    // Each turn is from the wall just drawn: eight 45° turns make an octagon.
+    const oct = parseVectors("10R 10l45 10l45 10l45 10l45 10l45 10l45 10l45").path;
+    expect(closure(oct).distance).toBeCloseTo(0, 6);
+    expect(area(oct)).toBeCloseTo(2 * (1 + Math.SQRT2) * 100, 4);
+  });
+
+  it("turns: first wall, and U or D, measure clockwise from that direction", () => {
+    const p = parseVectors("10u45").path.segments[0]!.to;
+    expect(p.x).toBeCloseTo(10 * Math.SQRT1_2, 6);
+    expect(p.y).toBeCloseTo(10 * Math.SQRT1_2, 6);
+    const q = parseVectors("R10 10d45").path.segments[1]!.to;
+    expect(q.x).toBeCloseTo(10 - 10 * Math.SQRT1_2, 6);
+    expect(q.y).toBeCloseTo(-10 * Math.SQRT1_2, 6);
+  });
+
+  it("turns: recorded as absolute walls for rewrites", () => {
+    const r = parseVectors("10R 10'6r45 5U");
+    expect(r.sources).toEqual(["10R", "A315:10'6", "5U"]);
+    expect(parseVectors("R10 A315:10'6 U5").path).toEqual(r.path);
+  });
+
   it("length first: bad tokens are still reported as typed", () => {
     const r = parseVectors("24R 5X 30U 10R5L 24 0R");
     expect(r.errors.map((e) => e.text)).toEqual(["5X", "10R5L", "24", "0R"]);
