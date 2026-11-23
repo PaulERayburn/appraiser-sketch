@@ -102,6 +102,12 @@ input:focus, select:focus, textarea:focus, button:focus-visible { outline: 2px s
 }
 .brand { font-weight: 650; letter-spacing: 0.02em; }
 .group { display: flex; gap: 4px; }
+/* Basic or Detailed plan: a two-way switch, the one in use filled in. */
+.plan-mode { gap: 0; }
+.plan-mode button { border-radius: 0; margin-left: -1px; }
+.plan-mode button:first-child { border-radius: 6px 0 0 6px; margin-left: 0; }
+.plan-mode button:last-child { border-radius: 0 6px 6px 0; }
+.plan-mode button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; position: relative; }
 .toggle { display: flex; gap: 5px; align-items: center; }
 .show-group { align-items: center; gap: 10px; }
 .muted { color: var(--muted); }

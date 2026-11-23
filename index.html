@@ -17,6 +17,10 @@
   <body>
     <header class="toolbar">
       <span class="brand">Appraiser Sketch</span>
+      <div class="group plan-mode" role="group" aria-label="How much the sketch shows">
+        <button id="mode-basic" title="Basic plan: outlines and areas only. Stairs, doors, interior walls and wall thickness are put away (nothing is deleted).">Basic</button>
+        <button id="mode-detail" title="Detailed plan: adds stairs, doors, interior walls and wall thickness. None of them changes an area.">Detailed</button>
+      </div>
       <div class="group">
         <button id="btn-new" title="New sketch">New</button>
         <button id="btn-open" title="Open (Ctrl+O)">Open</button>
@@ -39,7 +43,7 @@
         <span class="muted">Show</span>
         <label class="toggle" title="Wall dimensions (also on the printed sketch)"><input type="checkbox" id="show-dims" checked /> Dimensions</label>
         <label class="toggle" title="Area names and sizes (also on the printed sketch)"><input type="checkbox" id="show-labels" checked /> Labels</label>
-        <label class="toggle" title="Floor plan detail: stairs, doors, interior walls and wall thickness. Off keeps the sketch to outlines and areas, and hides those tools. Nothing is deleted; it never changes an area."><input type="checkbox" id="show-detail" /> Detail</label>
+        <input type="checkbox" id="show-detail" hidden />
         <label class="toggle" title="Background grid (screen only)"><input type="checkbox" id="show-grid" checked /> Grid</label>
         <label class="toggle" title="Inside angle at each corner of the selected area (screen only)"><input type="checkbox" id="show-angles" checked /> Angles</label>
         <label class="toggle" title="Keep the whole sketch in view as you draw. Zooming or panning by hand turns it off; F or Fit turns it back on."><input type="checkbox" id="auto-fit" checked /> Auto fit</label>

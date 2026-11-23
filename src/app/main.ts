@@ -2687,6 +2687,8 @@ function drawToolbar() {
   syncCheck($<HTMLInputElement>("show-labels"), store.state.sketch.meta.showLabels !== false);
   const detail = showsDetail(store.state.sketch);
   syncCheck($<HTMLInputElement>("show-detail"), detail);
+  $("mode-basic").setAttribute("aria-pressed", String(!detail));
+  $("mode-detail").setAttribute("aria-pressed", String(detail));
   document.body.classList.toggle("no-detail", !detail);
   const ansi = $<HTMLInputElement>("ansi-mode");
   if (ansi.checked !== store.state.sketch.meta.ansi) ansi.checked = store.state.sketch.meta.ansi;
@@ -2972,6 +2974,14 @@ $<HTMLInputElement>("show-dims").addEventListener("change", (e) => {
     else draft.meta.showDims = false;
   });
 });
+// Basic or Detailed, up front on the toolbar: each sets the Detail switch if it is not already that way.
+for (const [id, on] of [["mode-basic", false], ["mode-detail", true]] as const) {
+  $(id).addEventListener("click", () => {
+    const box = $<HTMLInputElement>("show-detail");
+    if (box.checked !== on) box.click();
+  });
+}
+
 // Floor plan detail: off for a basic plan, on for stairs, doors, interior walls and wall thickness.
 $<HTMLInputElement>("show-detail").addEventListener("change", (e) => {
   const on = (e.target as HTMLInputElement).checked;
@@ -2986,7 +2996,7 @@ $<HTMLInputElement>("show-detail").addEventListener("change", (e) => {
     // Nothing stays picked that is no longer on the drawing.
     return !on && sel ? { structure: sel.structure, area: sel.area } : undefined;
   });
-  say(on ? "Detail on: stairs, doors, interior walls and wall thickness" : had ? "Detail off: kept with the sketch, back when you turn it on" : "Detail off: outlines and areas only");
+  say(on ? "Detailed plan: stairs, doors, interior walls and wall thickness" : had ? "Basic plan: the detail is kept, and comes back under Detailed" : "Basic plan: outlines and areas only");
 });
 
 $<HTMLInputElement>("show-labels").addEventListener("change", (e) => {
