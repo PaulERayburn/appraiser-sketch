@@ -216,6 +216,12 @@ function readArea(a: Raw, where: string): Area {
   );
 }
 
+/** A wall thickness in feet: more than nothing, and no thicker than 3'. */
+function thickness(m: Raw, key: string): number | undefined {
+  const v = num(m, key, "header");
+  return v === undefined || (v > 0 && v <= 3) ? v : damaged(`header: ${key}`);
+}
+
 function readMeta(raw: unknown): SketchMeta {
   if (raw === undefined) return { ansi: true };
   if (!isObject(raw)) damaged("header");
@@ -231,6 +237,8 @@ function readMeta(raw: unknown): SketchMeta {
       date: str(m, "date", "header"),
       showDims: bool(m, "showDims", "header"),
       showLabels: bool(m, "showLabels", "header"),
+      wallThickness: thickness(m, "wallThickness"),
+      interiorWallThickness: thickness(m, "interiorWallThickness"),
     }),
   };
 }

@@ -11,6 +11,9 @@ import { cornerAngles, formatAngle,
   orientation,
   signedPolygonArea,
   doorSymbol,
+  hasWalls,
+  insetPolygon,
+  snapToWall,
   seatDoor,
   stairDrawing,
   wallSegments,
@@ -232,9 +235,16 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       const data = `data-structure="${esc(s.structure.id)}" data-area="${esc(r.area.id)}"`;
       const scr = pts.map((p) => toScreen(v, p));
 
+      // Outside walls drawn to thickness, inward from the measured (outside) face.
+      const wallT = meta.wallThickness && hasWalls(r.area.kind) && r.shape.closure.closed ? meta.wallThickness : undefined;
       if (pts.length >= 3) {
         const d = `M${scr.map((p) => `${n(p.x)},${n(p.y)}`).join("L")}Z`;
         parts.push(`<path class="${cls}" ${data} d="${d}"/>`);
+        const inner = wallT ? insetPolygon(pts, wallT) : null;
+        if (inner) {
+          const di = `M${inner.map((p) => toScreen(v, p)).map((p) => `${n(p.x)},${n(p.y)}`).join("L")}Z`;
+          parts.push(`<path class="wall-band" fill-rule="evenodd" d="${d}${di}"/>`);
+        }
       } else if (pts.length === 2) {
         parts.push(`<path class="${cls}" ${data} d="M${n(scr[0]!.x)},${n(scr[0]!.y)}L${n(scr[1]!.x)},${n(scr[1]!.y)}"/>`);
       }
@@ -264,7 +274,9 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
         const d = runPath(w.path, v);
         if (!d) continue;
         const wsel = selected && selection?.iwall === w.wall.id;
-        parts.push(`<path class="iwall${wsel ? " selected" : ""}${w.inside ? "" : " outside"}" d="${d}"/>`);
+        // Drawn to thickness when the sketch has one, centred on the wall's line.
+        const thick = meta.interiorWallThickness ? ` style="stroke-width:${n(Math.max(1.2, meta.interiorWallThickness * v.scale))}px"` : "";
+        parts.push(`<path class="iwall${thick ? " thick" : ""}${wsel ? " selected" : ""}${w.inside ? "" : " outside"}"${thick} d="${d}"/>`);
         if (!interactive) continue;
         parts.push(`<path class="iwall-hit" ${data} data-iwall="${esc(w.wall.id)}" d="${d}"><title>Interior wall: drag to move, click to edit</title></path>`);
         if (wsel) {
@@ -283,13 +295,19 @@ export function renderSketch(result: SketchResult, opts: RenderOptions): string 
       // Stairs (symbols only; they never change the area).
       if (r.area.doors?.length) {
         // Doors sit in the walls as they are now, so one stays put when its wall is nudged.
-        const walls = wallSegments([r.shape.path, ...r.walls.map((w) => w.path)]);
+        const outline = wallSegments([r.shape.path]);
+        const walls = [...outline, ...wallSegments(r.walls.map((w) => w.path))];
         for (const door of r.area.doors) {
-          const sym = doorSymbol(seatDoor(door, walls));
+          const seated = seatDoor(door, walls);
+          const sym = doorSymbol(seated);
           const a = toScreen(v, sym.a);
           const b = toScreen(v, sym.b);
           const on = selected && selection?.door === door.id;
-          parts.push(`<line class="door-gap" x1="${n(a.x)}" y1="${n(a.y)}" x2="${n(b.x)}" y2="${n(b.y)}"/>`);
+          // The opening goes through the whole wall: inward from the outline, or across an interior wall.
+          const outer = snapToWall(seated.at, 0, outline, 0.05) !== null;
+          const through = outer ? (wallT ?? 0) * 2 : (meta.interiorWallThickness ?? 0);
+          const gap = through > 0 ? ` style="stroke-width:${n(through * v.scale + 3)}px"` : "";
+          parts.push(`<line class="door-gap"${gap} x1="${n(a.x)}" y1="${n(a.y)}" x2="${n(b.x)}" y2="${n(b.y)}"/>`);
           for (const line of sym.lines) {
             const pts = line.map((p) => toScreen(v, p)).map((p) => `${n(p.x)},${n(p.y)}`).join(" ");
             parts.push(`<polyline class="door-leaf${sym.dashed ? " dashed" : ""}${on ? " selected" : ""}" points="${pts}"/>`);

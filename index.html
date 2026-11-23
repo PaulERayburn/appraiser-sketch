@@ -391,6 +391,18 @@
           <h2>Property</h2>
           <div class="form">
             <label>Property address <input id="m-subject" type="text" /></label>
+            <label title="How thick the walls are drawn. For the look of the plan only: outlines are still measured to the outside face, and no area changes.">Walls drawn
+              <select id="m-walls">
+                <option value="line">As a single line</option>
+                <option value="2x4">2x4 framing, about 6"</option>
+                <option value="2x6">2x6 framing, about 8"</option>
+                <option value="custom">Custom thickness…</option>
+              </select>
+            </label>
+            <div class="pair wall-fields hidden" id="wall-fields">
+              <label title="Outside walls: framing, drywall and stucco or siding. Inches, or 0'8&quot;.">Outside <input id="m-wall-ext" type="text" inputmode="decimal" /></label>
+              <label title="Interior walls: a 2x4 partition with drywall each side is about 4.5&quot;.">Interior <input id="m-wall-int" type="text" inputmode="decimal" /></label>
+            </div>
           </div>
         </section>
         <section class="panel" id="labels-panel">

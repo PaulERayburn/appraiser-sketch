@@ -24,6 +24,8 @@ text { font-family: Arial, Helvetica, sans-serif; }
 .zone-part.zone-full { fill: none; }
 .zone-sloped { fill: none; }
 .iwall { fill: none; stroke: #111; stroke-width: 1; stroke-linecap: square; }
+.wall-band { fill: #8a8a8a; stroke: #111; stroke-width: 0.6; }
+.iwall.thick { stroke: #8a8a8a; stroke-linecap: butt; stroke-linejoin: miter; }
 .door-gap { stroke: #fff; stroke-width: 3; }
 .door-leaf { fill: none; stroke: #111; stroke-width: 0.8; }
 .door-leaf.dashed { stroke-dasharray: 4 3; }

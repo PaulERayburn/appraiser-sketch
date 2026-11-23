@@ -38,6 +38,7 @@ import {
   zoneLabel,
   zoneShort,
   DOOR_STYLES,
+  WALL_PRESETS,
   applyArrow,
   defaultDoor,
   snapToWall,
@@ -2269,8 +2270,66 @@ for (const [id, key] of metaFields) {
     ),
   );
 }
+// How thick the walls are drawn: a look for the plan, kept with the sketch. Never changes an area.
+const wallsUi = {
+  kind: $<HTMLSelectElement>("m-walls"),
+  fields: $<HTMLElement>("wall-fields"),
+  ext: $<HTMLInputElement>("m-wall-ext"),
+  int: $<HTMLInputElement>("m-wall-int"),
+};
+/** Chosen "Custom" and not yet typed a thickness that differs from a preset. */
+let wallsCustom = false;
+const inches = (feet: number | undefined) => (feet === undefined ? "" : `${Math.round(feet * 1200) / 100}"`);
+/** A thickness as typed: a bare number is inches (6, 4.5); marks are read as usual (0'8", 8"). */
+function readThickness(text: string): number | null {
+  const t = text.trim();
+  const v = /^[0-9]+(?:\.[0-9]+)?$/.test(t) ? Number(t) / 12 : parseLength(t);
+  return v !== null && v > 0 && v <= 3 ? v : null;
+}
+function wallPreset(meta: typeof store.state.sketch.meta): string {
+  if (meta.wallThickness === undefined) return "line";
+  const hit = WALL_PRESETS.find((p) => Math.abs(p.exterior / 12 - meta.wallThickness!) < 1e-6 && Math.abs(p.interior / 12 - (meta.interiorWallThickness ?? 0)) < 1e-6);
+  return hit && !wallsCustom ? hit.value : "custom";
+}
+wallsUi.kind.addEventListener("change", () => {
+  const v = wallsUi.kind.value;
+  wallsCustom = v === "custom";
+  const preset = WALL_PRESETS.find((p) => p.value === v);
+  store.update((draft) => {
+    if (v === "line") {
+      delete draft.meta.wallThickness;
+      delete draft.meta.interiorWallThickness;
+    } else if (preset) {
+      draft.meta.wallThickness = preset.exterior / 12;
+      draft.meta.interiorWallThickness = preset.interior / 12;
+    } else {
+      // Custom starts from what is there, or the usual 2x4 wall.
+      draft.meta.wallThickness ??= WALL_PRESETS[0]!.exterior / 12;
+      draft.meta.interiorWallThickness ??= WALL_PRESETS[0]!.interior / 12;
+    }
+  });
+});
+for (const [el, key] of [[wallsUi.ext, "wallThickness"], [wallsUi.int, "interiorWallThickness"]] as const) {
+  el.addEventListener("input", () => {
+    const v = readThickness(el.value);
+    if (v !== null) store.update((draft) => void (draft.meta[key] = v), { coalesce: `meta-${key}` });
+  });
+  el.addEventListener("blur", () => {
+    external = true;
+    drawMeta();
+    external = false;
+  });
+}
+
 function drawMeta() {
   for (const [id, key] of metaFields) sync($<HTMLInputElement>(id), store.state.sketch.meta[key] ?? "");
+  const meta = store.state.sketch.meta;
+  if (meta.wallThickness === undefined) wallsCustom = false;
+  const kind = wallPreset(meta);
+  sync(wallsUi.kind, kind);
+  wallsUi.fields.classList.toggle("hidden", kind !== "custom");
+  sync(wallsUi.ext, inches(meta.wallThickness));
+  sync(wallsUi.int, inches(meta.interiorWallThickness));
 }
 
 // ---------- hiding single dimensions and area labels ----------

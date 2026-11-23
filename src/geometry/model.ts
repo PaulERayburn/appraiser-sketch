@@ -136,6 +136,10 @@ export interface SketchMeta {
   showDims?: boolean;
   /** Show area name/size labels (default true). */
   showLabels?: boolean;
+  /** Outside walls drawn this thick, in feet (drawing only; unset = a single line). */
+  wallThickness?: number;
+  /** Interior walls drawn this thick, in feet (drawing only). */
+  interiorWallThickness?: number;
 }
 
 /** A free text label on the drawing (room names: "Bedroom", "Kitchen"…). */

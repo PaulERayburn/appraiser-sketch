@@ -6,6 +6,7 @@ export * from "./model.js";
 export * from "./stairs.js";
 export * from "./stairplan.js";
 export * from "./doors.js";
+export * from "./thickness.js";
 export * from "./templates.js";
 export * from "./zones.js";
 export * from "./edit.js";
