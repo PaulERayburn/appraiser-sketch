@@ -70,7 +70,7 @@ import { reportExportJson } from "../export/report.js";
 import { FileManager, SketchFileError, download, draftWasRejected, loadDraft, saveDraft } from "./files.js";
 import { exportLabels, mergeLabels, parseLabelsFile } from "./labels.js";
 import { centroid, renderSketch, toWorld, type View } from "./render.js";
-import { Store, findArea, newArea, newId, newSketch, newStructure, type Selection } from "./store.js";
+import { Store, findArea, newArea, newId, newSketch, newStructure, typingStep, type Selection } from "./store.js";
 
 // Length style (feet-inches or decimal feet), a per-viewer preference; set before anything is drawn.
 const UNITS_KEY = "sketch:units";
@@ -1530,20 +1530,31 @@ vectors.addEventListener("input", () => {
   }
   const zoneId = store.state.selection?.zone;
   const iwallId = store.state.selection?.iwall;
+  const now = findArea(store.state.sketch, store.state.selection)?.area;
+  // One undo step per wall typed or deleted, not one for everything typed in the box.
+  const step = (base: string, before: string | undefined) => typingStep(base, before ?? "", vectors.value);
   if (iwallId) {
+    const before = (now?.walls ?? []).find((x) => x.id === iwallId)?.vectors;
     editArea((a) => {
       const wl = (a.walls ?? []).find((x) => x.id === iwallId);
       if (wl) wl.vectors = vectors.value;
-    }, `iwall-vectors-${iwallId}`);
+    }, step(`iwall-vectors-${iwallId}`, before));
   } else if (zoneId) {
+    const before = now?.zones.find((x) => x.id === zoneId)?.vectors;
     editArea((a) => {
       const z = a.zones.find((x) => x.id === zoneId);
       if (z) z.vectors = vectors.value;
-    }, `zone-vectors-${zoneId}`);
+    }, step(`zone-vectors-${zoneId}`, before));
   } else {
-    editArea((a) => (a.vectors = vectors.value), "vectors");
+    editArea((a) => (a.vectors = vectors.value), step("vectors", now?.vectors));
   }
 });
+
+/** Grow the walls box with its text (2 to 8 lines) so the whole outline stays in view. */
+function fitVectorsBox() {
+  const rows = Math.min(8, Math.max(2, vectors.value.split("\n").length));
+  if (vectors.rows !== rows) vectors.rows = rows;
+}
 
 const ARROWS: Record<string, "up" | "down" | "left" | "right"> = {
   ArrowUp: "up",
@@ -1640,6 +1651,11 @@ function zoneBreakdown(r: AreaResult): string {
 }
 
 function drawVectorBar() {
+  drawVectorBarContent();
+  fitVectorsBox();
+}
+
+function drawVectorBarContent() {
   const sel = store.state.selection;
   const found = findArea(store.state.sketch, sel);
   vectors.disabled = !found;

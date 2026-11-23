@@ -1,8 +1,8 @@
 /**
  * App state: the sketch document, the selection, and undo/redo history.
  * Every change goes through `update`, which records one history step
- * (consecutive changes with the same `coalesce` key, such as typing in the
- * vector box, merge into a single step).
+ * (consecutive changes with the same `coalesce` key, such as typing one wall
+ * in the vector box, merge into a single step).
  */
 
 import { FORMAT_VERSION, type Area, type Sketch, type Structure } from "../geometry/index.js";
@@ -62,6 +62,18 @@ export function newSketch(): Sketch {
     meta: { ansi: true },
     structures: [newStructure({ areas: [first] })],
   };
+}
+
+/**
+ * Coalesce key for typing in a walls box. Keystrokes merge into one undo step
+ * only while they keep adding to (or keep deleting from) the same wall, so
+ * each wall typed or deleted is its own step and Ctrl+Z walks back one wall
+ * at a time instead of emptying the whole outline.
+ */
+export function typingStep(base: string, before: string, after: string): string {
+  const walls = after.trim() === "" ? 0 : after.trim().split(/\s+/).length;
+  const dir = after.length < before.length ? "del" : "add";
+  return `${base}#${walls}${dir}`;
 }
 
 export class Store {
