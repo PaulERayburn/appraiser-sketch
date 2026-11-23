@@ -273,15 +273,17 @@ details[open] { display: flex; flex-direction: column; gap: 6px; }
 .work[data-dock="left"] { flex-direction: row-reverse; }
 .work[data-dock="right"] { flex-direction: row; }
 .work[data-dock="left"] .vector-bar, .work[data-dock="right"] .vector-bar, .work[data-dock="float"] .vector-bar {
-  display: flex; flex-direction: column; gap: 6px; width: 230px; flex: none; min-height: 0; border-top: 0;
+  display: flex; flex-direction: column; gap: 6px; width: 150px; flex: none; min-height: 0; border-top: 0; padding: 8px;
 }
 .work[data-dock="left"] .vector-bar { border-right: 1px solid var(--line); }
 .work[data-dock="right"] .vector-bar { border-left: 1px solid var(--line); }
 .work[data-dock="left"] .vector-side, .work[data-dock="right"] .vector-side, .work[data-dock="float"] .vector-side {
-  flex-direction: row; align-items: center; gap: 10px;
+  flex-direction: row; flex-wrap: wrap; align-items: center; gap: 2px 8px;
 }
+.work[data-dock="left"] .vector-status, .work[data-dock="right"] .vector-status, .work[data-dock="float"] .vector-status { font-size: 12px; }
+.work[data-dock="left"] .vector-status button, .work[data-dock="right"] .vector-status button, .work[data-dock="float"] .vector-status button { margin-top: 2px; }
 .work[data-dock="left"] .vector-side .vector-label, .work[data-dock="right"] .vector-side .vector-label, .work[data-dock="float"] .vector-side .vector-label { padding-top: 0; }
-.work[data-dock="left"] .dock-select, .work[data-dock="right"] .dock-select, .work[data-dock="float"] .dock-select { margin-left: auto; }
+.work[data-dock="left"] .dock-select, .work[data-dock="right"] .dock-select, .work[data-dock="float"] .dock-select { max-width: none; width: 100%; }
 .work[data-dock="left"] #vectors, .work[data-dock="right"] #vectors { flex: 1; min-height: 6em; resize: none; }
 .work[data-dock="left"] .vector-status, .work[data-dock="right"] .vector-status { max-height: 40%; overflow: auto; }
 .work[data-dock="float"] .vector-bar {
